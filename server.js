@@ -12,7 +12,7 @@ const port = 40000;
 const WALLET_DIR = path.join(__dirname, 'Wallet_votoElectronicoBD');
 
 // Configuración de la base de datos
-const connectionOptions = {
+const dbConfig = {
   user: 'ADMIN',
   password: 'xXsCzXQjS39',
   connectString: '(description=(retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.us-ashburn-1.oraclecloud.com))(connect_data=(service_name=gcc1a01813aadef_votoelectronicobd_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))',
