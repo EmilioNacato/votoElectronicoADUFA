@@ -1,5 +1,5 @@
-process.env['TNS_ADMIN'] = '/home/ubuntu/wallet';
-process.env['NODE_EXTRA_CA_CERTS'] = '/home/ubuntu/wallet/ca.pem';
+process.env['TNS_ADMIN'] = '/home/ubuntu/Wallet_votoElectronicoBD';
+process.env['NODE_EXTRA_CA_CERTS'] = '/home/ubuntu/Wallet_votoElectronicoBD/ca.pem';
 const express = require('express');
 const path = require('path');
 const oracledb = require('oracledb');
@@ -12,7 +12,7 @@ const port = 40000;
 const dbConfig = {
   user: 'ADMIN', // Usuario de la base de datos
   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: '(description=(retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.us-ashburn-1.oraclecloud.com))(connect_data=(service_name=gcc1a01813aadef_votoelectronicobd_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))'
+  connectString: '(description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.us-ashburn-1.oraclecloud.com))(connect_data=(service_name=gcc1a01813aadef_votoelectronicobd_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))'
 };
 
 // Configurar la carpeta public para archivos estáticos
