@@ -8,11 +8,15 @@ const fs = require('fs');
 const app = express();
 const port = 40000;
 
+// Ruta al directorio que contiene los archivos de wallet descargados
+const WALLET_DIR = path.join(__dirname, 'Wallet_votoElectronicoBD');
+
 // Configuración de la base de datos
-const dbConfig = {
-  user: 'ADMIN', // Usuario de la base de datos
-  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: '(description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.us-ashburn-1.oraclecloud.com))(connect_data=(service_name=gcc1a01813aadef_votoelectronicobd_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))'
+const connectionOptions = {
+  user: 'ADMIN',
+  password: 'xXsCzXQjS39',
+  connectString: '(description=(retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.us-ashburn-1.oraclecloud.com))(connect_data=(service_name=gcc1a01813aadef_votoelectronicobd_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))',
+  walletLocation: WALLET_DIR,
 };
 
 // Configurar la carpeta public para archivos estáticos
