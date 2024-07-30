@@ -580,6 +580,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(port, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Aplicación escuchando en http://0.0.0.0:${PORT}`);
 });
