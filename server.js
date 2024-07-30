@@ -581,5 +581,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(port, '0.0.0.0', () => {
-  console.log(`Aplicación escuchando en http://0.0.0.0:${port}`);
+  console.log(`Aplicación escuchando en http://0.0.0.0:${PORT}`);
 });
