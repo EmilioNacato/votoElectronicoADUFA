@@ -1,6 +1,9 @@
 process.env['TNS_ADMIN'] = '/home/ubuntu/votoElectronicoADUFA/Wallet_votoElectronicoBD';
 process.env['NODE_EXTRA_CA_CERTS'] = '/home/ubuntu/votoElectronicoADUFA/Wallet_votoElectronicoBD/ewallet.pem';
 
+console.log('TNS_ADMIN:', process.env.TNS_ADMIN);
+console.log('NODE_EXTRA_CA_CERTS:', process.env.NODE_EXTRA_CA_CERTS);
+
 const express = require('express');
 const path = require('path');
 const oracledb = require('oracledb');
@@ -31,6 +34,7 @@ app.get('/api/usuarios', async (req, res) => {
     const result = await connection.execute(
       `SELECT NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US FROM USUARIOS`
     );
+    console.log(result.rows);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
