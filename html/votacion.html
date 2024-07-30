@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Previsualización - Votaciones ADUFA</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <!-- Favicons -->
+  <link href="../assets/img/logo.png" rel="icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files-->
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="../assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <link href="../assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="../assets/css/main.css" rel="stylesheet">
+  <script>
+    const rol = localStorage.getItem('rol');
+       if (!rol || rol !== '1') {
+         window.location.href = '/';
+       }
+
+       function preventBack() {
+         window.history.forward();
+       }
+       function preventBack() {
+         window.history.forward();
+      }
+
+       setTimeout(preventBack, 0);
+       setTimeout(preventBack, 0);
+
+       window.onunload = function() {
+         null;
+       };
+       window.onunload = function() {
+         null;
+       };
+
+        window.addEventListener('popstate', function(event) { 
+        history.pushState(null, "", location.href);
+      });
+  </script>
+</head>
+
+<body class="index-page">
+
+  <header id="header" class="header fixed-top">
+    <div class="branding d-flex align-items-center">
+      <div class="container position-relative d-flex align-items-center justify-content-between">
+        <a href="../index.html" class="logo d-flex align-items-center">
+          <h1 class="sitename">Votaciones ADUFA</h1>
+        </a>
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="#about">Configuración</a></li>
+            <li class="dropdown"><a href="#" id="username-display"> NOMBRE USUARIO <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><a href="#" id="logout-button">Cerrar Sesión</a></li>
+              </ul>
+            </li>
+          </ul>
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section id="about" class="about section">
+      <div class="container section-title" data-aos="fade-up">
+        <span>Previsualización Votaciones<br></span>
+        <h2>Previsualización Votaciones<br></h2>
+      </div>
+      <div class="container">
+        <div class="row px-0" style="margin-top: -50px;">
+          <!-- <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div> -->
+          <div class="col-lg-12 order-2 order-lg-1 content imagenFondoESPEVotacion" data-aos="fade-up" data-aos-delay="200"></div>
+          <!-- <div class="col-lg-2 order-2 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div> -->
+          <!-- <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div> -->
+          <div class="col-lg-12 order-2 order-lg-1 content form-container"data-aos="fade-up" data-aos-delay="200">
+            <h7 id="mensajePrev" style="text-align: center;">En esta previsualización usted confirmará los candidatos ingresados previamente. De esta precisa manera es como se desplegará al votante el formulario de votación.</h7>
+            <br>
+            <div class="row">
+              <div class="col-md-12">
+                <form id="votacionForm">
+                  <div id="checkboxesContainer"></div>
+                  <br>
+                  <div class="col-sm-12 text-center">
+                    <button type="submit" class="read-more">Generar Formulario</button>
+                    <button type="button" class="read-more" id="backButton">Regresar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="footer position-relative"><br>
+    <div class="container copyright text-center mt-4">
+      <p><strong class="px-1 sitename">Universidad de las Fuerzas Armadas "ESPE"</strong></p>
+      <div class="credits">
+        <strong class="px-1 sitename">Asociación de Docentes de las Fuerzas Armadas</strong> <span> 2024</span>
+      </div>
+    </div>
+  </footer>
+
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+  <div id="preloader"></div>
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/vendor/php-email-form/validate.js"></script>
+  <script src="../assets/vendor/aos/aos.js"></script>
+  <script src="../assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="../assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="../assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
+  <script src="../assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+  <script src="../assets/js/main.js"></script>
+
+  <script>
+    // Obtener nombres almacenados en localStorage
+    const formData = JSON.parse(localStorage.getItem('formData')) || {};
+    const periodo = formData.periodo || ''; // Obtener el periodo ingresado
+
+    // Generar campos de radio para cada nombre
+    const checkboxesContainer = document.getElementById('checkboxesContainer');
+    checkboxesContainer.innerHTML += `<br><h3 style:"font-weight: bold;">Periodo ${periodo}</h3>
+    <form id="secondForm">
+      <br>
+      <hr>
+      <br>
+      <div class="radio-tile-group">
+        <div class="form-check-inline col-md-1"></div>
+        <div class="form-check-inline col-md-10">
+          <input class="radio-button-nulo" type="radio" id="nulo" name="lista" value="NULO">
+          <label class="btn-nulo" for="nulo"> VOTAR NULO</label>
+        </div>
+        <div class="form-check-inline col-md-1"></div>
+      `;
+
+    formData.listas.forEach((lista, index) => {
+      let listaHtml = `
+      <div class="input-container form-check-inline" >
+        <input class="radio-button" type="radio" id="lista${index + 1}" name="lista" value="${index}">&nbsp&nbsp
+        <div class="radio-tile">
+          <h4 style="color: var(--accent-color); padding-top: 15px; font-weight: bold;">Lista ${index + 1} - ${lista.nombreLista}</h4>
+          <hr>
+          <label for="lista${index + 1}" >
+            <div class="row">
+              <div class="col-md-6" style="text-align: center;">
+                <img src="../assets/img/fotosListas/fotoPresidenteLista${index + 1}periodo${periodo}.png" alt="Presidente ${index + 1}" style="width: 120px; height: 144.4px; display: block; margin: 0 auto;">
+                <span class="lista-item">Presidente</span>
+              </div>
+              <div class="col-md-6" style="text-align: center;">
+                <img src="../assets/img/fotosListas/fotoVicepresidenteLista${index + 1}periodo${periodo}.png" alt="Vicepresidente ${index + 1}" style="width: 120px; height: 144.4px; display: block; margin: 0 auto;">
+                <span class="lista-item" style="text-align: center;">Vicepresidente</span>
+              </div>
+            </div>
+            <br>
+            <span class="lista-item">Presidente:</span> ${lista.presidente}<br>
+            <span class="lista-item">Vicepresidente:</span> ${lista.vicepresidente}<br>
+            <span class="lista-item">Secretario:</span> ${lista.secretario}<br>
+            <span class="lista-item">Tesorero:</span> ${lista.tesorero}<br>
+            <span class="lista-item">Síndico:</span> ${lista.sindico}<br>
+            <span class="lista-item">Vocal Principal 1:</span> ${lista.vocalesPrincipales[0]}<br>
+            <span class="lista-item">Vocal Principal 2:</span> ${lista.vocalesPrincipales[1]}<br>
+            <span class="lista-item">Vocal Principal 3:</span> ${lista.vocalesPrincipales[2]}<br>
+            <span class="lista-item">Vocal Suplente 1:</span> ${lista.vocalesSuplentes[0]}<br>
+            <span class="lista-item">Vocal Suplente 2:</span> ${lista.vocalesSuplentes[1]}<br>
+            <span class="lista-item">Vocal Suplente 3:</span> ${lista.vocalesSuplentes[2]}
+          </label>
+        </div>
+        <br>
+      </div>
+      `;
+      checkboxesContainer.innerHTML += listaHtml;
+    });
+
+    // Agregar campo "NULO" al final
+    checkboxesContainer.innerHTML += `<br>
+        </div></form>
+      `;
+      
+    // Evento para regresar al formulario anterior
+    const backButton = document.getElementById('backButton');
+    backButton.addEventListener('click', function() {
+        window.history.back();
+    });
+
+
+    // Evento para enviar el formulario
+    const votacionForm = document.getElementById('votacionForm');
+    votacionForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const formData = JSON.parse(localStorage.getItem('formData'));
+        fetch('/guardar-candidatos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        })
+        .then(response => response.text())
+        .then(data => {
+          alert(data);
+          MensajeGeneracion();
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    });
+    document.addEventListener('DOMContentLoaded', (event) => {
+      // Obtener el nombre del usuario desde el LocalStorage
+      const usuario = localStorage.getItem('usuario');
+
+      // Verificar si el nombre del usuario existe en el LocalStorage
+      if (usuario) {
+        // Actualizar el contenido del elemento con el ID 'username-display'
+        document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+      }
+      // Manejar el clic en el botón de "Cerrar Sesión"
+      document.getElementById('logout-button').addEventListener('click', function() {
+        // Borrar las variables 'rol' y 'usuario' del LocalStorage
+        localStorage.removeItem('rol');
+        localStorage.removeItem('usuario');
+        
+        // Redireccionar al index
+        window.location.href = '/';
+      });
+    });
+    function MensajeGeneracion() {
+      try {
+        // Ocultar el formulario y mostrar el mensaje
+        document.getElementById('votacionForm').style.display = 'none';
+        document.getElementById('mensajePrev').style.display = 'none';
+        const messageContainer = document.createElement('div');
+        messageContainer.classList.add('alert', 'alert-info', 'mt-3');
+        messageContainer.innerHTML = `<strong>¡Listo!</strong><br>Ha generado el formulario exitosamente para el periodo "${periodo}". El enlace a compartir será:
+            <a id="enlaceVotacion" href="localhost:3000/html/votacionADUFA.html?periodo=${periodo}" target="_blank">
+              localhost:3000/html/votacionADUFA.html?periodo=${periodo}
+            </a><br><br><button id="btnCopiarEnlace" class="read-more" style="text-align: center;">Copiar enlace</button>`; 
+
+        document.querySelector('.form-container').appendChild(messageContainer); 
+        // Event listener para el botón de copiar enlace
+        // Dentro de la función MensajeGeneracion
+        const btnCopiarEnlace = document.getElementById('btnCopiarEnlace');
+        btnCopiarEnlace.addEventListener('click', function() {
+            const enlaceVotacion = document.getElementById('enlaceVotacion');
+            const enlace = enlaceVotacion.href;
+
+            // Copiar el enlace al portapapeles
+            navigator.clipboard.writeText(enlace)
+                .then(() => {
+                    alert('¡Enlace copiado al portapapeles!');
+                })
+                .catch(err => {
+                    console.error('Error al copiar enlace: ', err);
+                });
+        });
+      } catch (error) {
+        console.error('Error al verificar voto:', error);
+      }
+    }
+
+  </script>
+</body>
+</html>

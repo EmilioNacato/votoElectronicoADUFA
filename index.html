@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Votaciones Login ADUFA</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <!-- Favicons -->
+  <link href="assets/img/logo.png" rel="icon">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/linearicons/1.0.0/icon-font.min.css">
+  <link rel="stylesheet" type="text/css" href="../assets/css/util.css">
+  <link rel="stylesheet" type="text/css" href="../assets/css/login.css">
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const rol = localStorage.getItem('rol');
+      if (rol === '1') {
+        window.location.replace('/html/configuracion.html');
+      } else if (rol === '2') {
+        // Obtener el parámetro 'periodo' de la URL actual
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodoenviado = urlParams.get('periodo');
+        // Redirigir a votacion.html con el parámetro 'periodo'
+        window.location.href = `/html/votacionADUFA.html?periodo=${periodoenviado}`;
+      }
+
+      function preventBack() {
+        window.history.forward();
+      }
+
+      setTimeout(preventBack, 0);
+
+      window.onunload = function() {
+        null;
+      };
+
+      window.addEventListener('popstate', function(event) {
+        history.pushState(null, "", location.href);
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="limiter">
+    <div class="container-login100">
+      <div class="wrap-login100">
+        <div class="login100-form-title" style="background-image: url(../assets/img/ESPEForms.png);">
+          <span class="login100-form-title-1">
+            Votaciones ADUFA
+          </span>
+        </div>
+        <form class="login100-form validate-form" method="POST" action="/login">
+          <input type="hidden" name="periodo" id="periodo">
+          <div class="wrap-input100 validate-input m-b-26" data-validate="El usuario es requerido">
+            <span class="label-input100">Usuario</span>
+            <input class="input100" type="text" name="username" placeholder="Inserte su usuario">
+            <span class="focus-input100"></span>
+          </div>
+          <div class="wrap-input100 validate-input m-b-18" data-validate="La contraseña es requerida">
+            <span class="label-input100">Contraseña</span>
+            <input class="input100" type="password" name="password" placeholder="Inserte su contraseña">
+            <span class="focus-input100"></span>
+          </div>
+          <div class="container-login100-form-btn">
+            <button class="login100-form-btn">
+              Entrar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Obtener el período desde la URL
+    document.addEventListener("DOMContentLoaded", function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const periodo = urlParams.get('periodo') || " ";
+      document.getElementById("periodo").value = periodo;
+    });
+  </script>
+  <script src="../assets/js/main.js"></script>
+</body>
+</html>

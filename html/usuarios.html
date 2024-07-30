@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Configuración - Votaciones ADUFA</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <!-- Favicons -->
+  <link href="../assets/img/logo.png" rel="icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files-->
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="../assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <link href="../assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="../assets/css/main.css" rel="stylesheet">
+</head>
+
+<body class="index-page">
+  <header id="header" class="header fixed-top">
+    <div class="branding d-flex align-items-center">
+      <div class="container position-relative d-flex align-items-center justify-content-between">
+        <a href="configuracion.html" class="logo d-flex align-items-center">
+          <h1 class="sitename">Votaciones ADUFA</h1>
+        </a>
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="configuracion.html">Configuración</a></li>
+            <li><a href="resultados.html">Resultados</a></li>
+            <li><a href="#about">Usuarios ADUFA</a></li>
+            <li class="dropdown"><a href="#" id="username-display"> NOMBRE USUARIO <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><a href="#" id="logout-button">Cerrar Sesión</a></li>
+              </ul>
+            </li>
+          </ul>
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="about" class="about section" style="padding-right: 10px;padding-left: 10px;">
+      <div class="container section-title" data-aos="fade-up">
+        <span>Gestión de Usuarios<br></span>
+        <h2>Gestión de Usuarios<br></h2>
+      </div>
+      <div class="container">
+        <!-- Formulario para Añadir/Modificar Usuario -->
+        <div class="row mb-4">
+          <div class="col-md-8">
+            <button id="toggleFormButton" class="btn btn-primary" style="width: 200px;">Agregar usuario</button><br><br>
+          </div>
+          
+          
+          <div id="divCreacionUsuario" class="col-md-12" style="display: none;">
+            <h2 class="mb-4">Agregación de Usuarios</h2>
+            <form id="usuarioForm">
+              <div class="mb-3">
+                <label for="idInput" class="form-label">ID</label>
+                <input type="text" class="form-control" id="idInput" required>
+              </div>
+              <div class="mb-3">
+                <label for="idRolInput" class="form-label">ID Rol</label>
+                <input type="text" class="form-control" id="idRolInput" required>
+              </div>
+              <div class="mb-3">
+                <label for="nombreInput" class="form-label">Nombre</label>
+                <input type="text" class="form-control" id="nombreInput" required>
+              </div>
+              <div class="mb-3">
+                <label for="apellidoInput" class="form-label">Apellido</label>
+                <input type="text" class="form-control" id="apellidoInput" required>
+              </div>
+              <div class="mb-3">
+                <label for="departamentoInput" class="form-label">Departamento</label>
+                <input type="text" class="form-control" id="departamentoInput" required>
+              </div>
+              <div class="mb-3">
+                <label for="contrasenaInput" class="form-label">Contraseña</label>
+                <input type="password" class="form-control" id="contrasenaInput" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Guardar</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Modal para Editar Usuario -->
+        <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">Editar Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <form id="editUserForm">
+                  <div class="mb-3">
+                    <label for="editIdInput" class="form-label">ID</label>
+                    <input type="text" class="form-control" id="editIdInput" readonly>
+                  </div>
+                  <div class="mb-3">
+                    <label for="editIdRolInput" class="form-label">ID Rol</label>
+                    <input type="text" class="form-control" id="editIdRolInput" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="editNombreInput" class="form-label">Nombre</label>
+                    <input type="text" class="form-control" id="editNombreInput" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="editApellidoInput" class="form-label">Apellido</label>
+                    <input type="text" class="form-control" id="editApellidoInput" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="editDepartamentoInput" class="form-label">Departamento</label>
+                    <input type="text" class="form-control" id="editDepartamentoInput" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="editContrasenaInput" class="form-label">Contraseña</label>
+                    <input type="password" class="form-control" id="editContrasenaInput" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de Usuarios -->
+        <h2 class="mb-4">Lista de Usuarios</h2>
+        <!-- Formulario para Buscar por ID -->
+        <div class="row mb-4">
+          <div class="col-md-12">
+            <form id="searchForm" class="d-flex">
+              <input type="text" class="form-control me-2" id="searchIdInput" placeholder="Buscar por ID" aria-label="Buscar por ID">
+              <button type="submit" class="btn btn-primary">Buscar</button>
+            </form>
+          </div>
+        </div>
+        <div id="usuariosContainer" class="table-responsive">
+          <table class="table table-bordered table-striped table-hover">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>ID Rol</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Departamento</th>
+                <th>Contraseña</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="usuariosTableBody">
+              <!-- Las filas de usuarios se llenarán aquí mediante JavaScript -->
+            </tbody>
+          </table>
+        </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="footer position-relative"><br>
+    <div class="container copyright text-center mt-4">
+      <p><strong class="px-1 sitename">Universidad de las Fuerzas Armadas "ESPE"</strong></p>
+      <div class="credits">
+        <strong class="px-1 sitename">Asociación de Docentes de las Fuerzas Armadas</strong> <span> 2024</span>
+      </div>
+    </div>
+  </footer>
+
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <div id="preloader"></div>
+
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/vendor/php-email-form/validate.js"></script>
+  <script src="../assets/vendor/aos/aos.js"></script>
+  <script src="../assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="../assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="../assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
+  <script src="../assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+  <script src="../assets/js/main.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const rol = localStorage.getItem('rol');
+      if (!rol || rol !== '1') {
+        window.location.href = '/';
+      }
+      fetchUsuarios();
+
+      const toggleButton = document.getElementById('toggleFormButton');
+      const divCreacionUsuario = document.getElementById('divCreacionUsuario');
+
+      toggleButton.addEventListener('click', () => {
+          if (divCreacionUsuario.style.display === 'none') {
+            divCreacionUsuario.style.display = 'block';
+          } else {
+            divCreacionUsuario.style.display = 'none';
+          }
+      });
+
+      const usuarioForm = document.getElementById('usuarioForm');
+      usuarioForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const id = document.getElementById('idInput').value;
+        const idRol = document.getElementById('idRolInput').value;
+        const nombre = document.getElementById('nombreInput').value;
+        const apellido = document.getElementById('apellidoInput').value;
+        const departamento = document.getElementById('departamentoInput').value;
+        const contrasena = document.getElementById('contrasenaInput').value;
+
+        const data = { idUs: id, idRol, nombreUs: nombre, apellidoUs: apellido, departamentoUs: departamento, contrasenaUs: contrasena };
+
+        try {
+          const response = await fetch('/api/usuarios-crud', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          const result = await response.json();
+          alert(result.message);
+          fetchUsuarios();
+        } catch (err) {
+          console.error('Error al guardar el usuario:', err);
+          alert('Error al guardar el usuario');
+        }
+      });
+
+      const searchForm = document.getElementById('searchForm');
+      searchForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const searchId = document.getElementById('searchIdInput').value.trim();
+        if (searchId) {
+          fetchUsuarioById(searchId);
+        } else {
+          fetchUsuarios();
+        }
+      });
+    });
+
+    async function fetchUsuarios() {
+      try {
+        const response = await fetch('/api/usuarios-crud');
+        const usuarios = await response.json();
+        const usuariosTableBody = document.getElementById('usuariosTableBody');
+        usuariosTableBody.innerHTML = '';
+
+        usuarios.forEach(usuario => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${usuario.ID_US}</td>
+            <td>${usuario.ID_ROL}</td>
+            <td>${usuario.NOMBRE_US}</td>
+            <td>${usuario.APELLIDO_US}</td>
+            <td>${usuario.DEPARTAMENTO_US}</td>
+            <td>${usuario.CONTRASENA_US}</td>
+            <td>
+              <button class="btn btn-info btn-sm btn-edit" data-id="${usuario.ID_US}">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${usuario.ID_US}')">Eliminar</button>
+            </td>
+          `;
+          usuariosTableBody.appendChild(row);
+        });
+      } catch (err) {
+        console.error('Error al obtener los usuarios:', err);
+        alert('Error al obtener los usuarios');
+      }
+    }
+
+    async function fetchUsuarioById(id) {
+      try {
+        const response = await fetch(`/api/usuarios-crud/${id}`);
+        const usuario = await response.json();
+        const usuariosTableBody = document.getElementById('usuariosTableBody');
+        usuariosTableBody.innerHTML = '';
+
+        if (usuario) {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${usuario.ID_US}</td>
+            <td>${usuario.ID_ROL}</td>
+            <td>${usuario.NOMBRE_US}</td>
+            <td>${usuario.APELLIDO_US}</td>
+            <td>${usuario.DEPARTAMENTO_US}</td>
+            <td>${usuario.CONTRASENA_US}</td>
+            <td>
+              <button class="btn btn-info btn-sm btn-edit" data-id="${usuario.ID_US}">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${usuario.ID_US}')">Eliminar</button>
+            </td>
+          `;
+          usuariosTableBody.appendChild(row);
+        } else {
+          alert('Usuario no encontrado');
+          fetchUsuarios();
+        }
+      } catch (err) {
+        console.error('Error al buscar el usuario:', err);
+        alert('Error al buscar el usuario');
+      }
+    }
+
+    // function editUsuario(id) {
+    //   fetch(`/api/usuarios-crud/${id}`)
+    //     .then(response => response.json())
+    //     .then(usuario => {
+    //       document.getElementById('idInput').value = usuario.ID_US;
+    //       document.getElementById('idRolInput').value = usuario.ID_ROL;
+    //       document.getElementById('nombreInput').value = usuario.NOMBRE_US;
+    //       document.getElementById('apellidoInput').value = usuario.APELLIDO_US;
+    //       document.getElementById('departamentoInput').value = usuario.DEPARTAMENTO_US;
+    //       document.getElementById('contrasenaInput').value = usuario.CONTRASENA_US;
+    //     })
+    //     .catch(err => {
+    //       console.error('Error al cargar los datos del usuario:', err);
+    //       alert('Error al cargar los datos del usuario');
+    //     });
+    // }
+
+    // Manejar la edición de usuarios
+    document.addEventListener('click', async function(event) {
+      if (event.target.classList.contains('btn-edit')) {
+        const userId = event.target.dataset.id;
+
+        try {
+          const response = await fetch(`/api/usuarios-crud/${userId}`);
+          const user = await response.json();
+
+          document.getElementById('editIdInput').value = user.ID_US;
+          document.getElementById('editIdRolInput').value = user.ID_ROL;
+          document.getElementById('editNombreInput').value = user.NOMBRE_US;
+          document.getElementById('editApellidoInput').value = user.APELLIDO_US;
+          document.getElementById('editDepartamentoInput').value = user.DEPARTAMENTO_US;
+          document.getElementById('editContrasenaInput').value = user.CONTRASENA_US;
+
+          const editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+          editUserModal.show();
+        } catch (err) {
+          console.error('Error al cargar los datos del usuario:', err);
+          alert('Error al cargar los datos del usuario');
+        }
+      }
+    });
+
+    const editUserForm = document.getElementById('editUserForm');
+    editUserForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const id = document.getElementById('editIdInput').value;
+      const idRol = document.getElementById('editIdRolInput').value;
+      const nombre = document.getElementById('editNombreInput').value;
+      const apellido = document.getElementById('editApellidoInput').value;
+      const departamento = document.getElementById('editDepartamentoInput').value;
+      const contrasena = document.getElementById('editContrasenaInput').value;
+
+      const data = { idRol, nombreUs: nombre, apellidoUs: apellido, departamentoUs: departamento, contrasenaUs: contrasena };
+
+      try {
+        const response = await fetch(`/api/usuarios-crud/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        alert(result.message);
+        fetchUsuarios();
+        const editUserModal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+        editUserModal.hide();
+      } catch (err) {
+        console.error('Error al actualizar el usuario:', err);
+        alert('Error al actualizar el usuario');
+      }
+    });
+
+    function deleteUsuario(id) {
+      if (confirm('¿Está seguro de que desea eliminar este usuario?')) {
+        fetch(`/api/usuarios-crud/${id}`, {
+          method: 'DELETE'
+        })
+          .then(response => response.json())
+          .then(result => {
+            alert(result.message);
+            fetchUsuarios();
+          })
+          .catch(err => {
+            console.error('Error al eliminar el usuario:', err);
+            alert('Error al eliminar el usuario');
+          });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+      // Obtener el nombre del usuario desde el LocalStorage
+      const usuario = localStorage.getItem('usuario');
+
+      // Verificar si el nombre del usuario existe en el LocalStorage
+      if (usuario) {
+        // Actualizar el contenido del elemento con el ID 'username-display'
+        document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+      }
+      // Manejar el clic en el botón de "Cerrar Sesión"
+      document.getElementById('logout-button').addEventListener('click', function() {
+        // Borrar las variables 'rol' y 'usuario' del LocalStorage
+        localStorage.removeItem('rol');
+        localStorage.removeItem('usuario');
+        
+        // Redireccionar al index
+        window.location.href = '/';
+      });
+    });  
+  </script>  
+  
+</body>
+</html>

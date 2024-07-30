@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Configuración - Votaciones ADUFA</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <!-- Favicons -->
+  <link href="../assets/img/logo.png" rel="icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files-->
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="../assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <link href="../assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="../assets/css/main.css" rel="stylesheet">
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const rol = localStorage.getItem('rol');
+      // if (!rol || rol !== '1') {
+      //   window.location.href = '/';
+      // }
+
+      // function preventBack() {
+      //   window.history.forward();
+      // }
+
+      // setTimeout(preventBack, 0);
+
+      // window.onunload = function() {
+      //   null;
+      // };
+
+      // window.addEventListener('popstate', function(event) {
+      //   history.pushState(null, "", location.href);
+      // });
+
+      // Obtener usuarios y llenar los campos de selección
+      fetch('/api/usuarios')
+        .then(response => response.json())
+        .then(data => {
+          console.log(data); // Depuración: muestra los datos en consola
+          const userSelects = document.querySelectorAll('.user-select');
+          userSelects.forEach(select => {
+            data.forEach(user => {
+              const option = document.createElement('option');
+              option.value = `${user.nombres} ${user.apellidos}`;
+              option.text = `${user.nombres} ${user.apellidos}`;
+              select.appendChild(option);
+            });
+          });
+        })
+        .catch(err => console.error('Error al obtener los usuarios:', err));
+    });
+
+    document.getElementById('initialForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+
+      const periodo = document.getElementById('periodo').value;
+      const numListas = parseInt(document.getElementById('numListas').value);
+      console.log("initial submit");
+
+      let secondFormHtml = `
+        <p style="color: rgba(255, 255, 255, 0.8); text-align: center; font-size: 12px;">En este apartado se ingresarán cada uno de los candidatos postulados, separados por dignidades para su correcta selección.</p>
+        <h4 style="color: aliceblue;">Periodo ${periodo}</h4><form id="secondForm">
+        <br><div style="background-color: white; width: 760px; margin-left: -20px;">
+          <div style="background-color: rgba(0, 0, 0, 0.1); width: 760px; height: 15px;"></div>
+        </div>`;
+
+      for (let lista = 1; lista <= numListas; lista++) {
+        secondFormHtml += `<h4 style="color: var(--accent-color); padding-top: 15px;">Lista ${lista}</h4><hr>`;
+        console.log("initial lista");
+
+        const dignidades = ['Presidente', 'Vicepresidente', 'Secretario', 'Tesorero', 'Síndico'];
+        dignidades.forEach(dignidad => {
+          secondFormHtml += `
+            <div class="form-group row my-2">
+              <label class="col-sm-4 col-form-label">${dignidad}</label>
+              <div class="col-sm-8">
+                <select name="${dignidad.toLowerCase()}${lista}" class="form-control user-select" required>
+                  <option value="" disabled selected>Seleccione un ${dignidad.toLowerCase()}</option>
+                </select>
+              </div>
+            </div>`;
+        });
+
+        for (let i = 1; i <= 3; i++) {
+          secondFormHtml += `
+            <div class="form-group row my-2">
+              <label class="col-sm-4 col-form-label">Vocal Principal ${i}</label>
+              <div class="col-sm-8">
+                <select name="vocalPrincipal${i}Lista${lista}" class="form-control user-select" required>
+                  <option value="" disabled selected>Seleccione un vocal principal</option>
+                </select>
+              </div>
+            </div>`;
+        }
+
+        for (let i = 1; i <= 3; i++) {
+          secondFormHtml += `
+            <div class="form-group row my-2">
+              <label class="col-sm-4 col-form-label">Vocal Suplente ${i}</label>
+              <div class="col-sm-8">
+                <select name="vocalSuplente${i}Lista${lista}" class="form-control user-select" required>
+                  <option value="" disabled selected>Seleccione un vocal suplente</option>
+                </select>
+              </div>
+            </div>`;
+        }
+
+        secondFormHtml += `<br><div style="background-color: white; width: 760px; margin-left: -20px;">
+          <div style="background-color: rgba(0, 0, 0, 0.1); width: 760px; height: 15px;"></div>
+        </div>`;
+      }
+
+      secondFormHtml += `<br>
+        <div class="form-group row my-2">
+          <div class="col-sm-12 text-center">
+            <button type="submit" class="read-more" id="submitButton">Enviar</button>
+            <button type="button" class="read-more" id="backButton">Regresar</button>
+          </div>
+        </div>
+      </form>`;
+
+      document.getElementById('secondFormContainer').innerHTML = secondFormHtml;
+
+      document.getElementById('initialForm').style.display = 'none';
+      document.getElementById('secondFormContainer').style.display = 'block';
+
+      document.getElementById('backButton').addEventListener('click', function() {
+        document.getElementById('secondFormContainer').style.display = 'none';
+        document.getElementById('initialForm').style.display = 'block';
+      });
+
+
+      // document.getElementById('secondForm').addEventListener('submit', function(event) {
+      //   event.preventDefault();
+
+      //   const formData = new FormData(this);
+      //   formData.append('periodo', periodo);
+
+      //   const formDataObj = {};
+      //   formData.forEach((value, key) => {
+      //     formDataObj[key] = value;
+      //   });
+
+      //   localStorage.setItem('formData', JSON.stringify(formDataObj));
+
+      //   window.location.href = '/html/votacion.html';
+      // });
+
+      // Obtener usuarios y llenar los campos de selección nuevamente
+      fetch('/api/usuarios')
+        .then(response => response.json())
+        .then(data => {
+          console.log(data); // Depuración: muestra los datos en consola
+          const userSelects = document.querySelectorAll('.user-select');
+          userSelects.forEach(select => {
+            data.forEach(user => {
+              const option = document.createElement('option');
+              option.value = `${user.nombres} ${user.apellidos}`;
+              option.text = `${user.nombres} ${user.apellidos}`;
+              select.appendChild(option);
+            });
+          });
+        })
+        .catch(err => console.error('Error al obtener los usuarios:', err));
+    });
+
+    
+  </script>
+</head>
+
+<body class="index-page">
+  <header id="header" class="header fixed-top">
+    <div class="branding d-flex align-items-center">
+      <div class="container position-relative d-flex align-items-center justify-content-between">
+        <a href="configuracion.html" class="logo d-flex align-items-center">
+          <h1 class="sitename">Votaciones ADUFA</h1>
+        </a>
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="#about">Configuración</a></li>
+            <li><a href="resultados.html">Resultados</a></li>
+            <li><a href="usuarios.html">Usuarios ADUFA</a></li>
+            <li class="dropdown"><a href="#" id="username-display"> NOMBRE USUARIO <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><a href="#" id="logout-button">Cerrar Sesión</a></li>
+              </ul>
+            </li>
+          </ul>
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section id="about" class="about section">
+      <div class="container section-title" data-aos="fade-up">
+        <span>Configuración de Votaciones<br></span>
+        <h2>Configuración de Votaciones<br></h2>
+      </div>
+
+      <div class="container">
+        <div class="row px-0" style="margin-top: -50px;">
+          <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-8 order-2 order-lg-1 content imagenFondoESPE" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-2 order-2 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-8 order-2 order-lg-1 content form-container" data-aos="fade-up" data-aos-delay="200">
+            <div class="row">
+              <div class="col-md-12">
+                <form id="initialForm">
+                  <p style="text-align: center; font-size: 12px;">En este espacio especificará el periodo de elecciones al cual desea implementar la votación electrónica, además se seleccionarán el número de candidatos por cada una de las necesidades que requiera. En caso de no requerir de alguna dignidad ponga una cantidad 0.</p>
+                  <div class="form-group row my-2">
+                    <label for="periodo" class="col-sm-4 col-form-label">Periodo de Elecciones</label>
+                    <div class="col-sm-8">
+                      <input type="text" class="form-control" id="periodo" placeholder="Ingrese el periodo de elecciones" required="1">
+                    </div>
+                  </div>
+                  <hr>
+                  <div style="background-color: white; width: 105%; margin-left: -20px;">
+                    <div style="background-color: rgba(0, 0, 0, 0.1); width: 100%; height: 15px;"></div>
+                  </div>
+                  <div class="form-group row my-2">
+                    <label for="listas" class="col-sm-4 col-form-label" style="color: var(--accent-color);font-size: 20px;">Listas</label>
+                    <hr>
+                    <label for="listas" class="col-sm-4 col-form-label">Ingrese Número de Listas</label>
+                    <div class="col-sm-8">
+                      <input type="number" class="form-control" id="numListas" min="0" placeholder="Cantidad" required="1">
+                    </div>
+                  </div>
+                  <br>
+                  <div class="form-group row my-2">
+                    <div class="col-sm-12 text-center">
+                      <button type="submit" class="read-more">Enviar</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div id="secondFormContainer" style="display: none;"></div>
+
+            <div id="thirdFormContainer" style="display: none;">
+              <h2 class="text-center mb-4">Formulario de Votación</h2>
+              <form id="votingForm">
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="footer position-relative"><br>
+    <div class="container copyright text-center mt-4">
+      <p><strong class="px-1 sitename">Universidad de las Fuerzas Armadas "ESPE"</strong></p>
+      <div class="credits">
+        <strong class="px-1 sitename">Asociación de Docentes de las Fuerzas Armadas</strong> <span> 2024</span>
+      </div>
+    </div>
+  </footer>
+
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <div id="preloader"></div>
+
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/vendor/php-email-form/validate.js"></script>
+  <script src="../assets/vendor/aos/aos.js"></script>
+  <script src="../assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="../assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="../assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
+  <script src="../assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+  <script src="../assets/js/main.js"></script>
+
+  <script>
+    document.getElementById('initialForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+
+      const periodo = document.getElementById('periodo').value;
+      const numListas = parseInt(document.getElementById('numListas').value);
+
+      let secondFormHtml = `
+        <p style="text-align: center; font-size: 12px;">En este apartado se ingresarán cada uno de los candidatos postulados, separados por dignidades para su correcta selección.</p>
+        <h4>Periodo ${periodo}</h4><form id="secondForm" action="/uploadProvisionales" method="POST" enctype="multipart/form-data">
+          <br><div style="background-color: white; width: 105%; margin-left: -20px;">
+              <div style="background-color: rgba(0, 0, 0, 0.1); width: 100%; height: 15px;"></div>
+            </div>`;
+
+      for (let lista = 1; lista <= numListas; lista++) {
+        secondFormHtml += `<h4 style="color: var(--accent-color); padding-top: 15px;">Lista ${lista}</h4><hr>
+            <div class="form-group row my-2">
+              <label class="col-sm-4 col-form-label"> Nombre de la lista</label>
+              <div class="col-sm-8">
+                <input type="text" id="nombreLista${lista}" name="nombreLista${lista}" class="form-control" placeholder="Ingrese el nombre de la lista" required>
+              </div>
+            </div>
+            <div class="form-group row my-2">
+              <label class="col-sm-4 col-form-label"> Foto del Presidente</label>
+              <div class="col-sm-8">
+                <input type="file" id="fotoPresidenteLista${lista}periodo${periodo}" name="fotoPresidenteLista${lista}periodo${periodo}" class="form-control-file" accept="image/*" required>
+              </div>
+            </div>
+            <div class="form-group row my-2">
+              <label class="col-sm-4 col-form-label"> Foto del Vicepresidente</label>
+              <div class="col-sm-8">
+                <input type="file" id="fotoVicepresidenteLista${lista}periodo${periodo}" name="fotoVicepresidenteLista${lista}periodo${periodo}" class="form-control-file" accept="image/*" required>
+              </div>
+            </div>`;
+        
+        const dignidades = ['Presidente', 'Vicepresidente', 'Secretario', 'Tesorero', 'Sindico'];
+        dignidades.forEach(dignidad => {
+          secondFormHtml += `
+            <div class="form-group row my-2">
+              <label class="col-sm-4 col-form-label">${dignidad}</label>
+              <div class="col-sm-8">
+                <select id="${dignidad.toLowerCase()}Lista${lista}" name="${dignidad.toLowerCase()}${lista}" class="form-control user-select" required>
+                  <option value="" disabled selected>Seleccione un ${dignidad.toLowerCase()}</option>
+                </select>
+              </div>
+            </div>`;
+        });
+
+        for (let i = 1; i <= 3; i++) {
+          secondFormHtml += `
+            <div class="form-group row my-2">
+              <label class="col-sm-4 col-form-label">Vocal Principal ${i}</label>
+              <div class="col-sm-8">
+                <select id="vocalPrincipal${i}Lista${lista}" name="vocalPrincipal${i}Lista${lista}" class="form-control user-select" required>
+                  <option value="" disabled selected>Seleccione un vocal principal</option>
+                </select>
+              </div>
+            </div>`;
+        }
+
+        for (let i = 1; i <= 3; i++) {
+          secondFormHtml += `
+            <div class="form-group row my-2">
+              <label class="col-sm-4 col-form-label">Vocal Suplente ${i}</label>
+              <div class="col-sm-8">
+                <select id="vocalSuplente${i}Lista${lista}" name="vocalSuplente${i}Lista${lista}" class="form-control user-select" required>
+                  <option value="" disabled selected>Seleccione un vocal suplente</option>
+                </select>
+              </div>
+            </div>`;
+        }
+
+        secondFormHtml += `<br><div style="background-color: white; width: 105%; margin-left: -20px;">
+            <div style="background-color: rgba(0, 0, 0, 0.1); width: 100%; height: 15px;"></div>
+            </div>`;
+      }
+
+      secondFormHtml += `<br>
+        <div class="form-group row my-2">
+          <div class="col-sm-12 text-center">
+            <button type="submit" class="read-more" id="submitButton">Enviar</button>
+            <button type="button" class="read-more" id="backButton">Regresar</button>
+          </div>
+        </div>
+      </form>`;
+
+      document.getElementById('secondFormContainer').innerHTML = secondFormHtml;
+
+      document.getElementById('initialForm').style.display = 'none';
+      document.getElementById('secondFormContainer').style.display = 'block';
+
+      document.getElementById('backButton').addEventListener('click', function() {
+        document.getElementById('secondFormContainer').style.display = 'none';
+        document.getElementById('initialForm').style.display = 'block';
+      });
+  
+      // document.getElementById('secondForm').addEventListener('submit', function(event) {
+      //   event.preventDefault();
+  
+      //   const formData = new FormData(this);
+      //   formData.append('periodo', periodo);
+  
+      //   const formDataObj = {};
+      //   formData.forEach((value, key) => {
+      //     formDataObj[key] = value;
+      //   });
+  
+      //   localStorage.setItem('formData', JSON.stringify(formDataObj));
+  
+      //   window.location.href = 'votacion.html';
+      // });
+      document.getElementById('secondForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const listas = [];
+        
+        for (let lista = 1; lista <= numListas; lista++) {
+          const listaData = {
+            nombreLista: document.getElementById(`nombreLista${lista}`).value,
+            presidente: document.getElementById(`presidenteLista${lista}`).value,
+            vicepresidente: document.getElementById(`vicepresidenteLista${lista}`).value,
+            secretario: document.getElementById(`secretarioLista${lista}`).value,
+            tesorero: document.getElementById(`tesoreroLista${lista}`).value,
+            sindico: document.getElementById(`sindicoLista${lista}`).value,
+            vocalesPrincipales: [],
+            vocalesSuplentes: []
+          };
+
+          for (let i = 1; i <= 3; i++) {
+            listaData.vocalesPrincipales.push(document.getElementById(`vocalPrincipal${i}Lista${lista}`).value);
+          }
+
+          for (let i = 1; i <= 3; i++) {
+            listaData.vocalesSuplentes.push(document.getElementById(`vocalSuplente${i}Lista${lista}`).value);
+          }
+
+          listas.push(listaData);
+        }
+
+        const datos = {
+          periodo: periodo,
+          listas: listas
+        };
+
+        // Imprimir formData en la consola
+        console.log('formData:', datos);
+
+        localStorage.setItem('formData', JSON.stringify(datos));
+
+        // Llamar a la función para guardar las imágenes
+        saveImages(periodo);
+
+        window.location.href = 'votacion.html';
+      });
+
+      function saveImages(periodo) {
+        // const form = document.getElementById('secondForm');
+        // const formFotos = new FormData(form);
+
+        const form = document.getElementById('secondForm');
+        const formFotos = new FormData();
+
+        // Obtener todos los campos de tipo "file" del formulario
+        const fileInputs = form.querySelectorAll('input[type="file"]');
+
+        // Agregar solo los archivos de imagen a formFotos
+        fileInputs.forEach(input => {
+            if (input.files.length > 0) {
+                formFotos.append(input.name, input.files[0]);
+            }
+        });
+
+        // Imprimir el contenido de formFotos en la consola
+        for (const pair of formFotos.entries()) {
+            console.log(`${pair[0]}: ${pair[1].name}`);
+        }
+
+        fetch('/upload', {
+          method: 'POST',
+          body: formFotos
+        })
+        .then(response => response.json())
+        .then(data => {
+          alert('Imágenes guardadas exitosamente.');
+        })
+        .catch(error => {
+          // console.error('Error al guardar las imágenes:', error);  // Imprime el error en la consola
+          // alert('Error al guardar las imágenes. Ver consola para detalles.');
+        });
+      }
+
+      // Obtener usuarios y llenar los campos de selección nuevamente
+      fetch('/api/usuarios')
+        .then(response => response.json())
+        .then(data => {
+          console.log(data); // Depuración: muestra los datos en consola
+          const userSelects = document.querySelectorAll('.user-select');
+          userSelects.forEach(select => {
+            data.forEach(user => {
+              const option = document.createElement('option');
+              option.value = `${user.nombres}, ${user.apellidos}`;
+              option.text = `${user.nombres}, ${user.apellidos}`;
+              select.appendChild(option);
+            });
+          });
+        })
+        .catch(err => console.error('Error al obtener los usuarios:', err));
+    });
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+      // Obtener el nombre del usuario desde el LocalStorage
+      const usuario = localStorage.getItem('usuario');
+
+      // Verificar si el nombre del usuario existe en el LocalStorage
+      if (usuario) {
+        // Actualizar el contenido del elemento con el ID 'username-display'
+        document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+      }
+      // Manejar el clic en el botón de "Cerrar Sesión"
+      document.getElementById('logout-button').addEventListener('click', function() {
+        // Borrar las variables 'rol' y 'usuario' del LocalStorage
+        localStorage.removeItem('rol');
+        localStorage.removeItem('usuario');
+        
+        // Redireccionar al index
+        window.location.href = '/';
+      });
+    });  
+  </script>
+</body>
+</html>

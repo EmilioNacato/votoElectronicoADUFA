@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resultados - Votaciones ADUFA</title>
+  <!-- Favicons -->
+  <link href="../assets/img/logo.png" rel="icon">
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/css/main.css" rel="stylesheet">
+</head>
+<body>
+  <header id="header" class="header fixed-top">
+    <div class="branding d-flex align-items-center">
+      <div class="container position-relative d-flex align-items-center justify-content-between">
+        <a href="configuracion.html" class="logo d-flex align-items-center">
+          <h1 class="sitename">Votaciones ADUFA</h1>
+        </a>
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="configuracion.html">Configuración</a></li>
+            <li><a href="#about">Resultados</a></li>
+            <li><a href="usuarios.html">Usuarios ADUFA</a></li>
+            <li class="dropdown"><a href="#" id="username-display"> NOMBRE USUARIO <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><a href="#" id="logout-button">Cerrar Sesión</a></li>
+              </ul>
+            </li>
+          </ul>
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section id="about" class="about section">
+      <div class="container section-title" data-aos="fade-up">
+        <span>Resultado de Votaciones<br></span>
+        <h2>Resultado de Votaciones<br></h2>
+      </div>
+
+      <div class="container">
+        <div class="row px-0" style="margin-top: -50px;">
+          <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-8 order-2 order-lg-1 content imagenFondoESPE" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-2 order-2 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-8 order-2 order-lg-1 content form-container" data-aos="fade-up" data-aos-delay="200">
+            <div class="row">
+              <div class="col-md-12">
+                <form id="initialForm">
+                  <p style="text-align: center; font-size: 12px;">En este apartado, podrá visualizar los resultados detallados de las votaciones correspondientes al periodo seleccionado. Los resultados se presentan por dignidades, mostrando el número de votos obtenidos por cada candidato, así como los votos nulos. Además, se destacará el candidato ganador de cada categoría.</p>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <section class="section">
+      <div class="container">
+        <div class="container">
+          <form id="resultForm">
+            <div class="form-group">
+              <label for="periodoSelect">Periodo de Elecciones</label><br><br>
+              <select id="periodoSelect" class="form-control" required>
+                <option value="" disabled selected>Seleccione un periodo</option>
+              </select>
+            </div><br>
+            <button type="submit" class="btn btn-danger">Consultar</button>
+          </form>
+
+          <div id="resultContainer" style="display: none; margin-top: 20px;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container text-center">
+      <p>Universidad de las Fuerzas Armadas "ESPE"</p>
+      <p>Asociación de Docentes de las Fuerzas Armadas 2024</p>
+    </div>
+  </footer>
+
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/js/main.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const rol = localStorage.getItem('rol');
+      if (!rol || rol !== '1') {
+        window.location.href = '/';
+      }
+
+      fetch('/api/periodos')
+        .then(response => response.json())
+        .then(periodos => {
+          const periodoSelect = document.getElementById('periodoSelect');
+          periodos.forEach(periodo => {
+            const option = document.createElement('option');
+            option.value = periodo;
+            option.textContent = periodo;
+            periodoSelect.appendChild(option);
+          });
+        })
+        .catch(err => console.error('Error al obtener los periodos:', err));
+
+      document.getElementById('resultForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const periodo = document.getElementById('periodoSelect').value;
+        const resultContainer = document.getElementById('resultContainer');
+
+        if (periodo) {
+          fetch(`/api/resultados?periodo=${periodo}`)
+            .then(response => response.json())
+            .then(data => {
+              resultContainer.innerHTML = `
+                <h4 class="text-center my-4">Resultados para el periodo ${periodo}</h4>
+                ${generateResultsHtml(data)}
+              `;
+              resultContainer.style.display = 'block';
+            })
+            .catch(err => console.error('Error al obtener los resultados:', err));
+        }
+      });
+
+      function generateResultsHtml(data) {
+        // Separar la lista "nulo"
+        const listasNormales = data.filter(lista => lista.nombre.toLowerCase() !== 'nulo');
+        const listaNulo = data.find(lista => lista.nombre.toLowerCase() === 'nulo');
+
+        // Crear HTML para listas normales
+        let html = '<table class="table table-bordered table-striped table-hover"><thead class="table-dark"><tr><th>Lista</th><th>Votos</th></tr></thead><tbody>';
+        listasNormales.forEach(lista => {
+          html += `<tr><td>${lista.nombre}</td><td>${lista.votos}</td></tr>`;
+        });
+
+        // Agregar la lista "nulo" al final
+        if (listaNulo) {
+          html += `<tr><td>NULO</td><td>${listaNulo.votos}</td></tr>`;
+        }
+        
+        html += '</tbody></table>';
+
+        // Determinar el ganador
+        const ganador = listasNormales.reduce((max, lista) => (lista.votos > max.votos ? lista : max), listasNormales[0]);
+        html += `<p>Ganador: ${ganador.nombre} con ${ganador.votos} votos</p>`;
+
+        return html;
+      }
+
+    });
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+      const usuario = localStorage.getItem('usuario');
+      if (usuario) {
+        document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+      }
+
+      document.getElementById('logout-button').addEventListener('click', function() {
+        localStorage.removeItem('rol');
+        localStorage.removeItem('usuario');
+        window.location.href = '/';
+      });
+    });
+  </script>
+</body>
+</html>
