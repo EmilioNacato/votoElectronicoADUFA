@@ -583,7 +583,7 @@ app.delete('/api/usuarios-crud/:id', async (req, res) => {
 async function connectToFabric() {
   try {
     const ccpPath = path.resolve('/home/ubuntu/fabric-network/crypto-config', 'network.yaml');
-    const ccp = yaml.load(fs.readFileSync(ccpPath, 'utf8')); // Cambiar JSON.parse a yaml.load
+    const ccp = yaml.load(fs.readFileSync(ccpPath, 'utf8'));
 
     const walletPath = path.join('/home/ubuntu/votoElectronicoADUFA', 'Wallet_votoElectronicoBD');
     const wallet = await Wallets.newFileSystemWallet(walletPath);
@@ -602,42 +602,27 @@ async function connectToFabric() {
   }
 }
 
-
-// Ruta para inicializar los roles en el ledger de Hyperledger Fabric
-app.get('/api/initRoles', async (req, res) => {
-  let connection;
-
+// Endpoint para invocar chaincode
+app.get('/api/invoke', async (req, res) => {
   try {
-    connection = await oracledb.getConnection(dbConfig);
-    const result = await connection.execute(
-      `SELECT ID_ROL, NOMBRE_ROL, CREAR_VOTACION, VER_RESULTADOS FROM ROL`
-    );
-
-    const roles = result.rows.map(row => ({
-      id: row[0],
-      nombre: row[1],
-      crearVotacion: row[2],
-      verResultados: row[3],
-    }));
-
     const contract = await connectToFabric();
+    await contract.submitTransaction('initLedger');
+    res.send('Chaincode invoked successfully');
+  } catch (error) {
+    console.error(`Error invoking chaincode: ${error}`);
+    res.status(500).send('Error invoking chaincode');
+  }
+});
 
-    for (const role of roles) {
-      await contract.submitTransaction('createRol', role.id, role.nombre, role.crearVotacion.toString(), role.verResultados.toString());
-    }
-
-    res.send('Roles initialized in the ledger');
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error initializing roles');
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error(err);
-      }
-    }
+// Endpoint para consultar chaincode
+app.get('/api/query/:roleId', async (req, res) => {
+  try {
+    const contract = await connectToFabric();
+    const result = await contract.evaluateTransaction('queryRole', req.params.roleId);
+    res.json(JSON.parse(result.toString()));
+  } catch (error) {
+    console.error(`Error querying chaincode: ${error}`);
+    res.status(500).send('Error querying chaincode');
   }
 });
 
