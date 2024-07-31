@@ -602,6 +602,7 @@ async function connectToFabric() {
   }
 }
 
+
 // Ruta para inicializar los roles en el ledger de Hyperledger Fabric
 app.get('/api/initRoles', async (req, res) => {
   let connection;
