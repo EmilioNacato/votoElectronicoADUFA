@@ -581,7 +581,7 @@ app.delete('/api/usuarios-crud/:id', async (req, res) => {
 // Conectar con Hyperledger Fabric
 async function connectToFabric() {
   try {
-    const ccpPath = path.resolve('/home/ubuntu/fabric-network', 'network.yaml');
+    const ccpPath = path.resolve('/home/ubuntu/fabric-network/crypto-config', 'network.yaml');
     const ccp = yaml.load(fs.readFileSync(ccpPath, 'utf8')); // Cambiar JSON.parse a yaml.load
 
     const walletPath = path.join('/home/ubuntu/votoElectronicoADUFA', 'Wallet_votoElectronicoBD');
