@@ -1,0 +1,16 @@
+{
+    "name": "roles-contract",
+    "version": "1.0.0",
+    "description": "Chaincode for managing roles",
+    "main": "RolesContract.js",
+    "scripts": {
+      "start": "node RolesContract.js"
+    },
+    "dependencies": {
+      "fabric-contract-api": "^2.5.0",
+      "fabric-shim": "^2.5.0"
+    },
+    "author": "Emilio Nacato y Sebastian Mogrovejo",
+    "license": "Apache-2.0"
+  }
+  

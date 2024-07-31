@@ -576,6 +576,67 @@ app.delete('/api/usuarios-crud/:id', async (req, res) => {
   }
 });
 
+// Conectar con Hyperledger Fabric
+async function connectToFabric() {
+  try {
+    const ccpPath = path.resolve('/home/ubuntu/fabric-network', 'network.yaml');
+    const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+
+    const walletPath = path.join('/home/ubuntu/votoElectronicoADUFA', 'Wallet_votoElectronicoBD');
+    const wallet = await Wallets.newFileSystemWallet(walletPath);
+
+    const gateway = new Gateway();
+    await gateway.connect(ccp, { wallet, identity: 'admin', discovery: { enabled: true, asLocalhost: false } });
+
+    const network = await gateway.getNetwork('default');
+    const contract = network.getContract('roles');
+
+    console.log('Successfully connected to the Hyperledger Fabric network');
+    return contract;
+  } catch (error) {
+    console.error(`Error connecting to Fabric: ${error}`);
+    throw new Error('Error connecting to Fabric');
+  }
+}
+
+// Ruta para inicializar los roles en el ledger de Hyperledger Fabric
+app.get('/api/initRoles', async (req, res) => {
+  let connection;
+
+  try {
+    connection = await oracledb.getConnection(dbConfig);
+    const result = await connection.execute(
+      `SELECT ID_ROL, NOMBRE_ROL, CREAR_VOTACION, VER_RESULTADOS FROM ROL`
+    );
+
+    const roles = result.rows.map(row => ({
+      id: row[0],
+      nombre: row[1],
+      crearVotacion: row[2],
+      verResultados: row[3],
+    }));
+
+    const contract = await connectToFabric();
+
+    for (const role of roles) {
+      await contract.submitTransaction('createRol', role.id, role.nombre, role.crearVotacion.toString(), role.verResultados.toString());
+    }
+
+    res.send('Roles initialized in the ledger');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error initializing roles');
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
