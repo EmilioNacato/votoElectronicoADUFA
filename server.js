@@ -592,7 +592,7 @@ async function connectToFabric() {
     await gateway.connect(ccp, { wallet, identity: 'bmogrovejog@hotmail.com', discovery: { enabled: true, asLocalhost: false } });
 
     const network = await gateway.getNetwork('default');
-    const contract = network.getContract('roles');
+    const contract = network.getContract('rolesvoto');
 
     console.log('Successfully connected to the Hyperledger Fabric network');
     return contract;
