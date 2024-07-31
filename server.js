@@ -7,6 +7,7 @@ console.log('NODE_EXTRA_CA_CERTS:', process.env.NODE_EXTRA_CA_CERTS);
 const express = require('express');
 const bodyParser = require('body-parser');
 const oracledb = require('oracledb');
+const { Gateway, Wallets } = require('fabric-network');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
