@@ -7,12 +7,11 @@ async function main() {
     const walletPath = path.join(__dirname, 'Wallet_votoElectronicoBD');
     const wallet = await Wallets.newFileSystemWallet(walletPath);
 
-    const certPath = path.join(__dirname, 'fabric-network/crypto-config/artifacts/crypto/peerOrganizations/VotoBlockchain/users/bmogrovejog@hotmail.com/msp/signcerts');
-    const keyPath = path.join(__dirname, 'fabric-network/crypto-config/artifacts/crypto/peerOrganizations/VotoBlockchain/users/bmogrovejog@hotmail.com/msp/keystore');
-    
-    const cert = fs.readFileSync(path.join(certPath, 'cert.pem')).toString();
-    const keyFiles = fs.readdirSync(keyPath);
-    const key = fs.readFileSync(path.join(keyPath, keyFiles[0])).toString();
+    const certPath = '/home/ubuntu/fabric-network/crypto-config/artifacts/crypto/peerOrganizations/VotoBlockchain/users/bmogrovejog@hotmail.com/msp/signcerts/VotoBlockchain-signcert.pem';
+    const keyPath = '/home/ubuntu/fabric-network/crypto-config/artifacts/crypto/peerOrganizations/VotoBlockchain/users/bmogrovejog@hotmail.com/msp/keystore/VotoBlockchain-key.pem';
+
+    const cert = fs.readFileSync(certPath).toString();
+    const key = fs.readFileSync(keyPath).toString();
 
     const identityLabel = 'bmogrovejog@hotmail.com';
     const identity = {
