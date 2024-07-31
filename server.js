@@ -9,6 +9,8 @@ const bodyParser = require('body-parser');
 const oracledb = require('oracledb');
 const path = require('path');
 const multer = require('multer');
+const fs = require('fs');
+const yaml = require('js-yaml');
 
 const app = express();
 const PORT = 40000;
@@ -580,7 +582,7 @@ app.delete('/api/usuarios-crud/:id', async (req, res) => {
 async function connectToFabric() {
   try {
     const ccpPath = path.resolve('/home/ubuntu/fabric-network', 'network.yaml');
-    const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+    const ccp = yaml.load(fs.readFileSync(ccpPath, 'utf8')); // Cambiar JSON.parse a yaml.load
 
     const walletPath = path.join('/home/ubuntu/votoElectronicoADUFA', 'Wallet_votoElectronicoBD');
     const wallet = await Wallets.newFileSystemWallet(walletPath);
