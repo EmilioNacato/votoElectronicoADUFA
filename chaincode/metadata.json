@@ -1,0 +1,6 @@
+{
+    "type": "ccaas",
+    "label": "roles-contract",
+    "description": "Chaincode for managing roles"
+  }
+  
