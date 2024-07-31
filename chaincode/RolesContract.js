@@ -28,8 +28,10 @@ class RolesContract extends Contract {
   }
 
   async queryRole(ctx, roleId) {
+    console.info(`Querying role with ID: ${roleId}`);
     const roleAsBytes = await ctx.stub.getState(roleId);
     if (!roleAsBytes || roleAsBytes.length === 0) {
+      console.error(`${roleId} does not exist`);
       throw new Error(`${roleId} does not exist`);
     }
     console.log(roleAsBytes.toString());
@@ -47,6 +49,7 @@ class RolesContract extends Contract {
     };
 
     await ctx.stub.putState(id, Buffer.from(JSON.stringify(role)));
+    console.info(`Role ${id} created`);
     console.info('============= END : Create Role ===========');
   }
 }
