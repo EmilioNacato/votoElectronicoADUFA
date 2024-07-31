@@ -579,6 +579,7 @@ app.delete('/api/usuarios-crud/:id', async (req, res) => {
   }
 });
 
+
 // Conectar con Hyperledger Fabric
 async function connectToFabric() {
   try {
@@ -593,7 +594,15 @@ async function connectToFabric() {
 
     const network = await gateway.getNetwork('default');
     const contract = network.getContract('roles');
+    console.log('Invoking chaincode...');
+    await contract.submitTransaction('invoke', 'arg1', 'arg2');
+    console.log('Transaction has been submitted');
 
+    console.log('Querying chaincode...');
+    const result = await contract.evaluateTransaction('query', 'arg1');
+    console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+
+    await gateway.disconnect();
     console.log('Successfully connected to the Hyperledger Fabric network');
     return contract;
   } catch (error) {
@@ -601,7 +610,7 @@ async function connectToFabric() {
     throw new Error('Error connecting to Fabric');
   }
 }
-
+connectToFabric()
 // Endpoint para invocar chaincode
 app.get('/api/invoke', async (req, res) => {
   try {
