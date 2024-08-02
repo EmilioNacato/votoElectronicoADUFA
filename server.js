@@ -52,7 +52,7 @@ const dbConfig = {
   connectString: 'localhost/XE'
 };
 
-// Ruta para manejar la carga de archivos
+// Ruta para manejar la carga de archivosssss
 app.post('/upload', upload.any(), (req, res) => {
   // console.log('req.body upload:', req.body);
   // console.log('req.files upload:', req.files);
