@@ -46,9 +46,9 @@ app.use(express.static('.'));
 
 // Configuración de la base de datos
 const dbConfig = {
-  user: 'ADMIN', // Usuario de la base de datos
-  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
+  user: 'C##emilioadmin',
+  password: 'xXsCzXQjS39',
+  connectString: 'localhost/XE'
 };
 
 // Ruta para manejar la carga de archivos
