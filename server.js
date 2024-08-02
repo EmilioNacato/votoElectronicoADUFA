@@ -44,6 +44,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 //app.use(express.static(path.join(__dirname, '/')));
 app.use(express.static('.'));
 
+
 // Configuración de la base de datos
 // Esto es una prueba
 const dbConfig = {
@@ -255,7 +256,7 @@ app.post('/guardar-candidatos', async (req, res) => {
     await connection.close();
 
     res.status(200).send('Datos guardados correctamente');
-    console.log("Candidatos guardados en la base de datos");
+    console.log("Candidatos guardados en la base be datos");
   } catch (err) {
     console.error('Error al guardar los datos en la base de datos:', err);
     res.status(500).send('Error en el servidor');
