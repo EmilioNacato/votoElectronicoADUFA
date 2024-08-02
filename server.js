@@ -256,12 +256,16 @@ app.post('/guardar-candidatos', async (req, res) => {
     await connection.close();
 
     res.status(200).send('Datos guardados correctamente');
-    console.log("Candidatos guardados en la base be datos");
+    console.log("Candidatos guardados en la base de datos");
   } catch (err) {
     console.error('Error al guardar los datos en la base de datos:', err);
     res.status(500).send('Error en el servidor');
   }
 });
+
+
+// console.log('Datos del formulario recibidos:', formData);
+
 
 app.post('/guardar-votos', async (req, res) => {
   try {
