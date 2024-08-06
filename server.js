@@ -12,9 +12,16 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const yaml = require('js-yaml');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto'); 
+
+
 
 const app = express();
 const PORT = 40000;
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Configuración de almacenamiento con multer
 const storage = multer.diskStorage({
@@ -37,6 +44,15 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Configuración del transportador de nodemailer
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+      user: 'emilionacato75@gmail.com',
+      pass: 'hjqkxseleqyrrdaj' 
+  }
+});
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -52,6 +68,74 @@ const dbConfig = {
   password: 'xXsCzXQjS39',
   connectString: 'localhost/XE'
 };
+
+// Función para enviar correos con un retardo de 10 segundos
+function enviarCorreoConRetardo(transporter, mailOptions, delay) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(info);
+        }
+      });
+    }, delay);
+  });
+}
+
+// Función para enviar correos
+app.post('/enviar-credenciales', async (req, res) => {
+  const { link } = req.body;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    const result = await connection.execute(
+      `SELECT ID_US, EMAIL_US FROM USUARIOS WHERE ID_ROL = 2`
+    );
+
+    const usuarios = result.rows;
+    let delay = 0;
+
+    let promises = usuarios.map(async (usuario) => {
+      const userId = usuario[0];
+      const email = usuario[1];
+
+      // Generar contraseña aleatoria
+      const contrasenaAleatoria = crypto.randomBytes(4).toString('hex'); // 8 caracteres
+
+      // Actualizar la contraseña en la base de datos
+      await connection.execute(
+        `UPDATE USUARIOS SET CONTRASENA_US = :password WHERE ID_US = :userId`,
+        [contrasenaAleatoria, userId]
+      );
+
+      // Configurar las opciones del correo
+      const mailOptions = {
+        from: 'emilionacato75@gmail.com',
+        to: email,
+        subject: 'Credenciales de Votación',
+        text: `Hola, su contraseña es: ${contrasenaAleatoria}\nY el enlace de votación es: ${link}`
+      };
+
+      // Enviar correo con un retardo de 10 segundos entre cada envío
+      const resultado = await enviarCorreoConRetardo(transporter, mailOptions, delay);
+      delay += 10000; // Incrementar el retardo en 10 segundos para el próximo correo
+      return resultado;
+    });
+
+    await Promise.all(promises);
+
+    await connection.commit();
+    await connection.close();
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error al enviar correos:', error);
+    res.json({ success: false, message: 'Error al enviar correos' });
+  }
+});
+
 
 // Ruta para manejar la carga de archivosssss
 app.post('/upload', upload.any(), (req, res) => {
@@ -635,6 +719,8 @@ app.get('/api/query/:roleId', async (req, res) => {
     res.status(500).send(`Error querying chaincode: ${error.message}`);
   }
 });
+
+
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));

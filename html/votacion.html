@@ -248,9 +248,11 @@
         const messageContainer = document.createElement('div');
         messageContainer.classList.add('alert', 'alert-info', 'mt-3');
         messageContainer.innerHTML = `<strong>¡Listo!</strong><br>Ha generado el formulario exitosamente para el periodo "${periodo}". El enlace a compartir será:
-            <a id="enlaceVotacion" href="localhost:3000/html/votacionADUFA.html?periodo=${periodo}" target="_blank">
-              localhost:3000/html/votacionADUFA.html?periodo=${periodo}
-            </a><br><br><button id="btnCopiarEnlace" class="read-more" style="text-align: center;">Copiar enlace</button>`; 
+            <a id="enlaceVotacion" href="localhost:40000/html/votacionADUFA.html?periodo=${periodo}" target="_blank">
+              localhost:40000/html/votacionADUFA.html?periodo=${periodo}
+            </a><br><br>
+            <button id="btnCopiarEnlace" class="read-more" style="text-align: center;">Copiar enlace</button>; 
+            <button id="btnEnviarCredenciales" class="read-more" style="text-align: center;">Enviar Credenciales</button>`;
 
         document.querySelector('.form-container').appendChild(messageContainer); 
         // Event listener para el botón de copiar enlace
@@ -272,6 +274,27 @@
       } catch (error) {
         console.error('Error al verificar voto:', error);
       }
+
+      document.getElementById('btnEnviarCredenciales').addEventListener('click', function() {
+        fetch('/enviar-credenciales', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ link: `http://localhost:40000/html/votacionADUFA.html?periodo=${periodo}` })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert('Credenciales enviadas correctamente.');
+          } else {
+            alert('Error al enviar credenciales: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+      });
     }
 
   </script>
