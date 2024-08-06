@@ -84,7 +84,57 @@ function enviarCorreoConRetardo(transporter, mailOptions, delay) {
   });
 }
 
-// Función para enviar correos
+// Función para enviar correos en lotes
+async function enviarCorreosEnLotes(usuarios, link) {
+  const batchSize = 10;
+  let delay = 0;
+
+  for (let i = 0; i < usuarios.length; i += batchSize) {
+    const batch = usuarios.slice(i, i + batchSize);
+
+    let promises = batch.map((usuario, index) => {
+      const userId = usuario[0];
+      const email = usuario[1];
+
+      // Generar contraseña aleatoria
+      const contrasenaAleatoria = crypto.randomBytes(4).toString('hex'); // 8 caracteres
+
+      // Actualizar la contraseña en la base de datos
+      const updatePassword = async () => {
+        const connection = await oracledb.getConnection(dbConfig);
+        await connection.execute(
+          `UPDATE USUARIOS SET CONTRASENA_US = :password WHERE ID_US = :userId`,
+          [contrasenaAleatoria, userId]
+        );
+        await connection.commit();
+        await connection.close();
+      };
+
+      // Configurar las opciones del correo
+      const mailOptions = {
+        from: 'emilionacato75@gmail.com',
+        to: email,
+        subject: 'Credenciales de Votación',
+        text: `Hola, su ID de usuario es: ${userId}\nSu contraseña es: ${contrasenaAleatoria}\nY el enlace de votación es: ${link}`
+      };
+
+      // Enviar correo con un retardo de 10 segundos entre cada envío
+      const enviarCorreo = enviarCorreoConRetardo(transporter, mailOptions, index * 10000);
+
+      // Ejecutar la actualización de la contraseña y el envío del correo en paralelo
+      return updatePassword().then(() => enviarCorreo);
+    });
+
+    await Promise.all(promises);
+
+    // Esperar 2 minutos antes de enviar el siguiente lote de correos
+    if (i + batchSize < usuarios.length) {
+      await new Promise(resolve => setTimeout(resolve, 120000)); // 120000 ms = 2 minutos
+    }
+  }
+}
+
+// Función para manejar la solicitud de envío de credenciales
 app.post('/enviar-credenciales', async (req, res) => {
   const { link } = req.body;
 
@@ -95,45 +145,18 @@ app.post('/enviar-credenciales', async (req, res) => {
     );
 
     const usuarios = result.rows;
-    let delay = 0;
 
-    let promises = usuarios.map(async (usuario) => {
-      const userId = usuario[0];
-      const email = usuario[1];
-
-      // Generar contraseña aleatoria
-      const contrasenaAleatoria = crypto.randomBytes(4).toString('hex'); // 8 caracteres
-
-      // Actualizar la contraseña en la base de datos
-      await connection.execute(
-        `UPDATE USUARIOS SET CONTRASENA_US = :password WHERE ID_US = :userId`,
-        [contrasenaAleatoria, userId]
-      );
-
-      // Configurar las opciones del correo
-      const mailOptions = {
-        from: 'emilionacato75@gmail.com',
-        to: email,
-        subject: 'Credenciales de Votación',
-        text: `Hola, su usuario es: ${userId}\nSu contraseña es: ${contrasenaAleatoria}\nY el enlace de votación es: ${link}`
-      };
-
-      // Enviar correo con un retardo de 10 segundos entre cada envío
-      const resultado = await enviarCorreoConRetardo(transporter, mailOptions, delay);
-      delay += 10000; // Incrementar el retardo en 10 segundos para el próximo correo
-      return resultado;
-    });
-
-    await Promise.all(promises);
-
-    await connection.commit();
-    await connection.close();
+    await enviarCorreosEnLotes(usuarios, link);
 
     res.json({ success: true });
   } catch (error) {
     console.error('Error al enviar correos:', error);
     res.json({ success: false, message: 'Error al enviar correos' });
   }
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
 
 
