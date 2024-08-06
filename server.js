@@ -115,7 +115,7 @@ app.post('/enviar-credenciales', async (req, res) => {
         from: 'emilionacato75@gmail.com',
         to: email,
         subject: 'Credenciales de Votación',
-        text: `Hola, su contraseña es: ${contrasenaAleatoria}\nY el enlace de votación es: ${link}`
+        text: `Hola, su usuario es: ${userId}\nSu contraseña es: ${contrasenaAleatoria}\nY el enlace de votación es: ${link}`
       };
 
       // Enviar correo con un retardo de 10 segundos entre cada envío
