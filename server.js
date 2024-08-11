@@ -155,10 +155,88 @@ app.post('/enviar-credenciales', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
-});
 
+// // Ruta para guardar configuración
+// app.post('/guardar-configuracion', async (req, res) => {
+//   const { periodo, numListas, fechaPublicacion } = req.body;
+//   global.fechaPublicacion = fechaPublicacion;  // Asegúrate de usar el valor enviado
+//   console.log('Fecha de publicación guardada:', global.fechaPublicacion);
+//   res.json({ success: true });
+// });
+
+// app.get('/verificar-hora', (req, res) => {
+//   const ahora = new Date();
+//   res.send(`Hora actual del servidor: ${ahora}`);
+// });
+
+// app.get('/test-verificacion', verificarFechaYHora, (req, res) => {
+//   res.send('Middleware de verificación de hora funcionando.');
+// });
+
+// async function verificarFechaYHora(req, res, next) {
+//   const userId = req.body.username || req.query.username;
+//   console.log('ID del usuario:', userId);
+
+//   if (!userId) {
+//     return res.status(400).send('ID de usuario no proporcionado.');
+//   }
+
+//   try {
+//     const connection = await oracledb.getConnection(dbConfig);
+//     console.log('Conexión a la base de datos establecida.');
+
+//     const result = await connection.execute(
+//       `SELECT ID_ROL FROM USUARIOS WHERE ID_US = :userId`,
+//       [userId]
+//     );
+
+//     console.log('Resultado de la consulta:', result.rows);
+
+//     if (result.rows.length > 0) {
+//       const role = result.rows[0][0];
+//       console.log('Rol del usuario:', role);
+
+//       if (role !== 2) {
+//         console.log('Rol no es 2, permitiendo acceso sin verificar hora.');
+//         return next(); // Si no es rol 2, continuar sin aplicar la verificación de hora
+//       }
+
+//       console.log('Verificando hora para rol 2...');
+//       const ahora = new Date();
+//       const hora = ahora.getHours();
+//       console.log('Hora actual:', hora);
+
+//       // Verificar que la hora esté entre 7 am y 5 pm
+//       if (hora < 13 || hora >= 17) {
+//         console.log('Hora fuera del rango permitido.');
+//         return res.status(403).send('Fuera del horario permitido para votar.');
+//       }
+
+//       console.log('Hora dentro del rango permitido.');
+//       next(); // Permitir acceso si todo está bien
+//     } else {
+//       console.log('Usuario no encontrado.');
+//       return res.status(403).send('Usuario no encontrado.');
+//     }
+
+//     await connection.close();
+//   } catch (err) {
+//     console.error('Error al verificar el rol:', err);
+//     res.status(500).send('Error en el servidor');
+//   }
+// }
+
+
+// // Aplicar el middleware a la ruta de votación
+// app.get('/votacionADUFA', verificarFechaYHora, (req, res) => {
+//   res.sendFile(path.join(__dirname, 'html', 'votacionADUFA.html'));
+// });
+
+
+// // Ruta para la página de configuración
+// app.get('/configuracion', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'html', 'configuracion.html'));
+// });
 
 // Ruta para manejar la carga de archivosssss
 app.post('/upload', upload.any(), (req, res) => {
