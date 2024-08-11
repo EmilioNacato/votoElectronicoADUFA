@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  <!-- Configuración del documento -->
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Votaciones ADUFA</title>
@@ -12,11 +13,8 @@
   <link href="../assets/img/logo.png" rel="icon">
 
   <!-- Fonts -->
-  <link href="https://fonts.googleapis.com" rel="preconnect">
-  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-
-  <!-- Vendor CSS Files-->
+  <link href="https://fonts.googleapis.com" rel="stylesheet">
+  <!-- Vendor CSS Files -->
   <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
@@ -25,41 +23,16 @@
 
   <!-- Main CSS File -->
   <link href="../assets/css/main.css" rel="stylesheet">
-  <script>
-    // const rol = localStorage.getItem('rol');
-    //    if (!rol) {
-    //      window.location.href = '/';
-    //    }
-
-    //    function preventBack() {
-    //      window.history.forward();
-    //    }
-
-    //    setTimeout(preventBack, 0);
-
-    //    window.onunload = function() {
-    //      null;
-    //    };
-
-    //    window.addEventListener('popstate', function(event) {
-    //      history.pushState(null, "", location.href);
-    //    });
-  </script>
 </head>
 
 <body class="index-page">
 
   <header id="header" class="header fixed-top">
-
     <div class="branding d-flex align-items-center">
-
       <div class="container position-relative d-flex align-items-center justify-content-between">
         <a href="../index.html" class="logo d-flex align-items-center">
-          <!-- Uncomment the line below if you also wish to use an image logo -->
-          <!-- <img src="assets/img/logo.png" alt=""> -->
           <h1 class="sitename">Votaciones ADUFA</h1>
         </a>
-
         <nav id="navmenu" class="navmenu">
           <ul>
             <li><a href="#about">Configuración</a></li>
@@ -72,30 +45,23 @@
           <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
         </nav>
       </div>
-
     </div>
-
   </header>
 
   <main class="main">
-
-    <!-- About Section -->
     <section id="about" class="about section">
-
-      <!-- Section Title -->
       <div class="container section-title" data-aos="fade-up">
         <span>Votaciones Directiva ADUFA<br></span>
         <h2>Votaciones Directiva ADUFA<br></h2>
-      </div><!-- End Section Title -->
+      </div>
 
       <div class="container">
-
         <div class="row px-0" style="margin-top: -50px;">
           <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
           <div class="col-lg-8 order-2 order-lg-1 content imagenFondoESPE" data-aos="fade-up" data-aos-delay="200"></div>
           <div class="col-lg-2 order-2 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
           <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
-          <div class="col-lg-8 order-2 order-lg-1 content form-container"data-aos="fade-up" data-aos-delay="200">
+          <div class="col-lg-8 order-2 order-lg-1 content form-container" data-aos="fade-up" data-aos-delay="200">
             <p id="MensajePrevio" style="text-align: center; font-size: 12px;">En este proceso electoral usted votará por los candidatos postulados
               para la directiva de la asociación de docentes de las Fuerzas Armadas "ADUFA" en el periodo actual.</p>
             <div class="row">
@@ -104,22 +70,45 @@
                   <div id="checkboxesContainer"></div>
                   <br>
                   <div class="col-sm-12 text-center">
-                    <button type="submit" class="read-more">Enviar Voto</button>
+                    <button type="button" class="read-more" id="submitVoteButton">Enviar Voto</button>
                     <button type="button" class="read-more" id="backButton">Regresar</button>
                   </div>
                 </form>
               </div>
             </div>
-            <!-- <a href="#" class="read-more"><span>Read More</span><i class="bi bi-arrow-right"></i></a> -->
           </div>
-
         </div>
-
       </div>
 
-    </section><!-- /About Section -->
-
+    </section>
   </main>
+
+  <!-- Modal de Términos y Condiciones -->
+  <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="termsModalLabel">Términos y Condiciones</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>De acuerdo con la legislación vigente en Ecuador sobre la protección de datos personales, su participación en el proceso de votación implica el tratamiento de ciertos datos personales. Al aceptar estos términos, usted consiente expresamente que se registre el hecho de que ha ejercido su derecho al voto, aunque no se registrará por quién ha votado. Esta información podrá ser utilizada exclusivamente para garantizar la integridad del proceso electoral y, si usted da su consentimiento, podrá ser visible en la sección de auditoría.</p>
+          
+          
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="acceptAudit">
+            <label class="form-check-label" for="acceptAudit">
+              Autorizo que mi participación en la votación sea visible en la auditoría (opcional).
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="confirmVote">Confirmar Voto</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <footer id="footer" class="footer position-relative"><br>
     <div class="container copyright text-center mt-4">
@@ -128,7 +117,6 @@
         <strong class="px-1 sitename">Asociación de Docentes de las Fuerzas Armadas</strong> <span> 2024</span>
       </div>
     </div>
-
   </footer>
 
   <!-- Scroll Top -->
@@ -298,13 +286,11 @@
         const data = await response.json();
 
         if (data.votoRealizado) {
-          // Si el usuario ya ha votado para este período, ocultar el formulario y mostrar el mensaje
           document.getElementById('votacionForm').style.display = 'none';
           document.getElementById('MensajePrevio').style.display = 'none';
           const messageContainer = document.createElement('div');
           messageContainer.classList.add('alert', 'alert-info', 'mt-3');
           messageContainer.innerHTML = `<strong>Período:</strong> ${periodo}<br>Usted ya ha ejercido su voto para estas elecciones.`;
-
           document.querySelector('.form-container').appendChild(messageContainer);
         }
       } catch (error) {
@@ -312,27 +298,31 @@
       }
     }
 
-    // Verificar si el usuario ha votado para este período
     if (usuario && periodo) {
       verificarVoto(usuario, periodo);
     }
 
-    // Evento para enviar el formulario (puedes agregar tu lógica aquí)
-    const votacionForm = document.getElementById('votacionForm');
-    votacionForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
+    // Mostrar modal de términos y condiciones antes de enviar el voto
+    document.getElementById('submitVoteButton').addEventListener('click', function() {
+      const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
+      termsModal.show();
+    });
+
+    // Evento para confirmar el voto después de aceptar los términos
+    document.getElementById('confirmVote').addEventListener('click', async function() {
+      const acceptAudit = document.getElementById('acceptAudit').checked;
+
+
       try {
-        // Obtener el usuario desde localStorage
         const usuario = localStorage.getItem('usuario');
         const listaseleccionada = document.querySelector('input[name="lista"]:checked').value;
 
-        // Obtener los datos del formulario
         const formData = {
           periodo: periodo,
-          idLista: listaseleccionada
+          idLista: listaseleccionada,
+          aceptaAuditoria: acceptAudit // Enviar si el usuario acepta estar en la auditoría
         };
 
-        // Enviar la solicitud POST al servidor
         const response = await fetch('/guardar-votos', {
           method: 'POST',
           headers: {
@@ -343,7 +333,10 @@
 
         const result = await response.json();
         alert(result.message);
-        // Recargar la página después de mostrar la alerta
+
+        // Ocultar el modal y recargar la página
+        const termsModal = bootstrap.Modal.getInstance(document.getElementById('termsModal'));
+        termsModal.hide();
         window.location.reload();
       } catch (error) {
         console.error('Error:', error);
@@ -352,24 +345,17 @@
     });
 
     document.addEventListener('DOMContentLoaded', (event) => {
-      // Obtener el nombre del usuario desde el LocalStorage
       const usuario = localStorage.getItem('usuario');
 
-      // Verificar si el nombre del usuario existe en el LocalStorage
       if (usuario) {
-        // Actualizar el contenido del elemento con el ID 'username-display'
         document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
       } else{
-        // Redireccionar al index.html si no existe el usuario
         window.location.href = '../index.html?periodo=' + periodo;
       }
-      // Manejar el clic en el botón de "Cerrar Sesión"
+
       document.getElementById('logout-button').addEventListener('click', function() {
-        // Borrar las variables 'rol' y 'usuario' del LocalStorage
         localStorage.removeItem('rol');
         localStorage.removeItem('usuario');
-        
-        // Redireccionar al index
         window.location.href = '/';
       });
     });

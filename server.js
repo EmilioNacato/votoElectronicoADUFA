@@ -479,16 +479,11 @@ app.post('/guardar-candidatos', async (req, res) => {
 app.post('/guardar-votos', async (req, res) => {
   try {
     const { usuario, formData } = req.body;
-    // console.log('Usuario obtenido:', usuario);
-    // console.log('Datos del formulario recibidos:', formData);
-
     const connection = await oracledb.getConnection(dbConfig);
 
     // Verificar si el votante ya existe en la tabla VOTANTES
     const checkVotanteQuery = `SELECT ID_US FROM VOTANTES WHERE ID_US = :usuario`;
     const result = await connection.execute(checkVotanteQuery, [usuario]);
-
-    //console.log(result.rows.length);
 
     if (result.rows.length == 0) {
       // Si el votante no existe, insertar el votante en la tabla VOTANTES
@@ -501,22 +496,22 @@ app.post('/guardar-votos', async (req, res) => {
       console.log('El votante ya existe en la tabla VOTANTES.');
     }
 
-    const insertQuery = `INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION)
-                         VALUES (:idLista, :periodoPostulacion, :usuario, CURRENT_TIMESTAMP)`;
-    
-    const insertNuloQuery = `INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION)
-                         VALUES ('nulo', :periodo_postulacion, :usuario, CURRENT_TIMESTAMP)`;
-    
-    const vot_id_us = usuario; // Variable Usuario de local storage
+    const insertQuery = `INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
+                         VALUES (:idLista, :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
+
+    const insertNuloQuery = `INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
+                             VALUES ('nulo', :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
+
+    const vot_id_us = usuario; // Usuario de local storage
     const period = formData.periodo;
     const id_lista = formData.idLista;
+    const aceptaAuditoria = formData.aceptaAuditoria ? 1 : 0;
 
     if (id_lista.toLowerCase() === 'nulo') {
-      console.log("Se insertara voto nulo");
-      await connection.execute(insertNuloQuery, [period, vot_id_us]);
+      console.log("Se insertará voto nulo");
+      await connection.execute(insertNuloQuery, [period, vot_id_us, aceptaAuditoria]);
     } else {
-      //console.log(`Votante: ${vot_id_us}, Candidato: ${id_us}, Período: ${period}`);
-      await connection.execute(insertQuery, [id_lista, period, vot_id_us]);
+      await connection.execute(insertQuery, [id_lista, period, vot_id_us, aceptaAuditoria]);
     }
 
     // Confirmar la transacción
@@ -529,7 +524,6 @@ app.post('/guardar-votos', async (req, res) => {
     res.status(500).send('Error en el servidor');
   }
 });
-
 
 
 // Ruta para obtener candidatos por período
@@ -871,6 +865,74 @@ app.get('/api/resultados/departamento', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Error en el servidor');
+  }
+});
+
+app.get('/api/auditoria', async (req, res) => {
+  const { periodo } = req.query;
+
+  if (!periodo) {
+    return res.status(400).json({ message: 'Periodo es requerido' });
+  }
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+
+    // Consulta para obtener el total de votantes con id_rol = 2 y estado_us = 1
+    const totalVotantesResult = await connection.execute(
+      `SELECT COUNT(*) AS totalVotantes
+       FROM USUARIOS 
+       WHERE ID_ROL = '2' AND ESTADO_US = '1'`
+    );
+    const totalVotantes = totalVotantesResult.rows[0][0];
+
+    // Consulta para obtener el número de votantes que han votado en el periodo seleccionado (sin importar si aceptaron auditoría)
+    const votantesQueHanVotadoResult = await connection.execute(
+      `SELECT COUNT(DISTINCT v.ID_US) AS votantesQueHanVotado
+       FROM VOTOS v
+       JOIN USUARIOS u ON v.ID_US = u.ID_US
+       WHERE v.PERIODO_POSTULACION = :periodo 
+       AND u.ID_ROL = '2' 
+       AND u.ESTADO_US = '1'`,
+      [periodo]
+    );
+    const votantesQueHanVotado = votantesQueHanVotadoResult.rows[0][0];
+
+    // Consulta para obtener los detalles de los votantes para la auditoría
+    const usuariosAuditadosResult = await connection.execute(
+      `SELECT u.ID_US AS id, u.NOMBRE_US AS nombre, u.APELLIDO_US AS apellido, u.DEPARTAMENTO_US AS departamento,
+              CASE 
+                WHEN v.ID_US IS NOT NULL AND v.ACEPTA_AUDITORIA = 1 THEN 'SI' 
+                ELSE 'NO' 
+              END AS haVotado
+       FROM USUARIOS u
+       LEFT JOIN VOTOS v ON u.ID_US = v.ID_US 
+       AND v.PERIODO_POSTULACION = :periodo
+       WHERE u.ID_ROL = '2' 
+       AND u.ESTADO_US = '1'
+       AND (v.ACEPTA_AUDITORIA = 1 OR v.ID_US IS NULL)`, // Solo mostrar si aceptaron la auditoría o si aún no han votado
+      [periodo]
+    );
+
+    const usuariosAuditados = usuariosAuditadosResult.rows.map(row => ({
+      id: row[0],
+      nombre: row[1],
+      apellido: row[2],
+      departamento: row[3],
+      haVotado: row[4] === 'SI',
+    }));
+
+    // Enviar la respuesta al frontend
+    res.json({
+      totalVotantes,
+      votantesQueHanVotado,
+      usuariosAuditados,
+    });
+
+    await connection.close();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error en el servidor' });
   }
 });
 

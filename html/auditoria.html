@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría de Usuarios - Votaciones ADUFA</title>
+    <meta content="" name="description">
+    <meta content="" name="keywords">
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- Favicons -->
+    <link href="../assets/img/logo.png" rel="icon">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+
+    <!-- Vendor CSS Files-->
+    <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
+    <link href="../assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+    <link href="../assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+
+    <!-- Main CSS File -->
+    <link href="../assets/css/main.css" rel="stylesheet">
+</head>
+
+<body>
+    <header id="header" class="header fixed-top">
+        <div class="branding d-flex align-items-center">
+            <div class="container position-relative d-flex align-items-center justify-content-between">
+                <a href="configuracion.html" class="logo d-flex align-items-center">
+                    <h1 class="sitename">Votaciones ADUFA</h1>
+                </a>
+                <nav id="navmenu" class="navmenu">
+                    <ul>
+                        <li><a href="configuracion.html" class="nav-link">Configuración</a></li>
+                        <li><a href="resultados.html" class="nav-link">Resultados</a></li>
+                        <li><a href="usuarios.html" class="nav-link">Usuarios ADUFA</a></li>
+                        <li><a href="#about" class="nav-link active">Auditoría de Usuarios</a></li>
+                        <li class="dropdown"><a href="#" id="username-display" class="nav-link"> NOMBRE USUARIO <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                            <ul>
+                                <li><a href="#" id="logout-button" class="nav-link">Cerrar Sesión</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <section id="about" class="about section">
+            <div class="container section-title" data-aos="fade-up">
+                <span>Auditoría de Usuarios<br></span>
+                <h2>Auditoría de Usuarios<br></h2>
+            </div>
+
+            <div class="container" data-aos="fade-up" data-aos-delay="200">
+                <div class="row px-0" style="margin-top: -50px;">
+                    <div class="col-lg-2 order-1 order-lg-1 content"></div>
+                    <div class="col-lg-8 order-2 order-lg-1 content imagenFondoESPE"></div>
+                    <div class="col-lg-2 order-2 order-lg-1 content"></div>
+                    <div class="col-lg-2 order-1 order-lg-1 content"></div>
+                    <div class="col-lg-8 order-2 order-lg-1 content form-container">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <form id="initialForm">
+                                    <p style="text-align: center; font-size: 12px;">
+                                        En este apartado, podrá realizar una auditoría completa de los usuarios registrados con rol de votante. Se podrá verificar cuántos votantes están registrados, cuántos han votado en el periodo seleccionado, y consultar detalles de los usuarios que ya han votado.
+                                    </p>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <section class="section">
+                <div class="container" data-aos="fade-up" data-aos-delay="200">
+                    <form id="auditoriaForm">
+                        <div class="form-group">
+                            <label for="periodoSelect">Periodo de Elecciones</label><br><br>
+                            <select id="periodoSelect" class="form-control" required>
+                                <option value="" disabled selected>Seleccione un periodo</option>
+                            </select>
+                        </div><br>
+                        <button type="submit" class="btn btn-danger">Consultar</button>
+                    </form><br>
+                    <div class="form-group">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Buscar usuario para su auditoria">
+                    </div>
+                    <div id="auditoriaContainer" style="display: none; margin-top: 20px;">
+                        <h4 id="periodoHeader" class="text-center my-4"></h4>
+                        <div id="votantesContainer"></div>
+                        <div id="usuariosAuditadosContainer" class="table-responsive" style="margin-top: 20px;">
+                            <h5 class="text-center">Usuarios Auditados</h5>
+                            <table class="table table-bordered table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>ID Usuario</th>
+                                        <th>Nombre</th>
+                                        <th>Apellido</th>
+                                        <th>Departamento</th>
+                                        <th>Ha Votado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usuariosAuditadosTableBody">
+                                    <!-- Las filas se llenarán mediante JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container text-center">
+            <p>Universidad de las Fuerzas Armadas "ESPE"</p>
+            <p>Asociación de Docentes de las Fuerzas Armadas 2024</p>
+        </div>
+    </footer>
+
+    <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+    <div id="preloader"></div>
+
+    <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/vendor/php-email-form/validate.js"></script>
+    <script src="../assets/vendor/aos/aos.js"></script>
+    <script src="../assets/vendor/swiper/swiper-bundle.min.js"></script>
+    <script src="../assets/vendor/glightbox/js/glightbox.min.js"></script>
+    <script src="../assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
+    <script src="../assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+    <script src="../assets/js/main.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const auditoriaForm = document.getElementById('auditoriaForm');
+            const periodoSelect = document.getElementById('periodoSelect');
+            fetch('/api/periodos')
+            .then(response => response.json())
+            .then(periodos => {
+                periodos.forEach(periodo => {
+                    const option = document.createElement('option');
+                    option.value = periodo;
+                    option.textContent = periodo;
+                    periodoSelect.appendChild(option);
+                });
+            })
+        .catch(err => console.error('Error al obtener los periodos:', err));
+            if (auditoriaForm) {
+                auditoriaForm.addEventListener('submit', function (event) {
+                    event.preventDefault();
+
+                    const periodo = document.getElementById('periodoSelect').value;
+                    const auditoriaContainer = document.getElementById('auditoriaContainer');
+                    const periodoHeader = document.getElementById('periodoHeader');
+                    const votantesContainer = document.getElementById('votantesContainer');
+                    const usuariosAuditadosTableBody = document.getElementById('usuariosAuditadosTableBody');
+
+                    if (periodo) {
+                        fetch(`/api/auditoria?periodo=${periodo}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                // Mostrar el periodo en el encabezado
+                                periodoHeader.textContent = `Auditoría de Usuarios para el periodo ${periodo}`;
+
+                                // Mostrar cantidad de votantes y votantes que ya han votado
+                                votantesContainer.innerHTML = `
+                                    <p><strong>Total de votantes registrados:</strong> ${data.totalVotantes}</p>
+                                    <p><strong>Votantes que han votado:</strong> ${data.votantesQueHanVotado}</p>
+                                `;
+
+                                // Mostrar usuarios auditados
+                                usuariosAuditadosTableBody.innerHTML = '';
+                                data.usuariosAuditados.forEach(usuario => {
+                                    const row = document.createElement('tr');
+                                    row.innerHTML = `
+                                        <td>${usuario.id}</td>
+                                        <td>${usuario.nombre}</td>
+                                        <td>${usuario.apellido}</td>
+                                        <td>${usuario.departamento}</td>
+                                        <td>${usuario.haVotado ? 'SI' : 'NO'}</td>
+                                    `;
+                                    usuariosAuditadosTableBody.appendChild(row);
+                                });
+
+                                auditoriaContainer.style.display = 'block';
+                            })
+                            .catch(err => console.error('Error al obtener la auditoría:', err));
+                    }
+                });
+            } else {
+                console.error("Elemento con ID 'auditoriaForm' no encontrado.");
+            }
+        });
+
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const usuario = localStorage.getItem('usuario');
+            if (usuario) {
+                document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+            }
+
+            document.getElementById('logout-button').addEventListener('click', function () {
+                localStorage.removeItem('rol');
+                localStorage.removeItem('usuario');
+                window.location.href = '/';
+            });
+        });
+
+        document.getElementById('searchInput').addEventListener('keyup', function() {
+            const searchValue = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#usuariosAuditadosTableBody tr');
+
+            rows.forEach(row => {
+                const id = row.querySelector('td:nth-child(1)').textContent.toLowerCase();
+                const nombre = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                const apellido = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+
+                if (id.includes(searchValue) || nombre.includes(searchValue) || apellido.includes(searchValue)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

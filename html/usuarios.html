@@ -16,7 +16,7 @@
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
 
   <!-- Vendor CSS Files-->
   <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -41,6 +41,7 @@
             <li><a href="configuracion.html">Configuración</a></li>
             <li><a href="resultados.html">Resultados</a></li>
             <li><a href="#about">Usuarios ADUFA</a></li>
+            <li><a href="auditoria.html">Auditoría de Usuarios</a></li>
             <li class="dropdown"><a href="#" id="username-display"> NOMBRE USUARIO <i class="bi bi-chevron-down toggle-dropdown"></i></a>
               <ul>
                 <li><a href="#" id="logout-button">Cerrar Sesión</a></li>
@@ -54,12 +55,33 @@
   </header>
 
   <main class="container">
-    <section id="about" class="about section" style="padding-right: 10px;padding-left: 10px;">
+    <section id="about" class="about section">
       <div class="container section-title" data-aos="fade-up">
-        <span>Gestión de Usuarios<br></span>
-        <h2>Gestión de Usuarios<br></h2>
+        <span>GESTIÓN DE USUARIOS<br></span>
+        <h2>GESTIÓN DE USUARIOS<br></h2>
       </div>
+
       <div class="container">
+        <div class="row px-0" style="margin-top: -50px;">
+          <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-8 order-2 order-lg-1 content imagenFondoESPE" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-2 order-2 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-2 order-1 order-lg-1 content" data-aos="fade-up" data-aos-delay="200"></div>
+          <div class="col-lg-8 order-2 order-lg-1 content form-container" data-aos="fade-up" data-aos-delay="200">
+            <div class="row">
+              <div class="col-md-12">
+                <form id="initialForm">
+                  <p style="text-align: center; font-size: 12px;">
+                    En este apartado, podrá gestionar de manera integral los usuarios del sistema, incluyendo la creación, edición, y eliminación de cuentas. Podrá asignar roles y permisos específicos y asegurarse de que la información de cada usuario esté actualizada y correcta. Esta funcionalidad es esencial para mantener la seguridad y organización del sistema, permitiendo un control efectivo sobre el acceso y las acciones de cada usuario dentro de la plataforma.
+                  </p>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <section id="about" class="about section" style="padding-right: 10px;padding-left: 10px;">
+      <div class="container" data-aos="fade-up" data-aos-delay="200">
         <!-- Formulario para Añadir/Modificar Usuario -->
         <div class="row mb-4">
           <div class="col-md-8">
@@ -142,13 +164,10 @@
 
         <!-- Tabla de Usuarios -->
         <h2 class="mb-4">Lista de Usuarios</h2>
-        <!-- Formulario para Buscar por ID -->
+        <!-- Barra de búsqueda -->
         <div class="row mb-4">
           <div class="col-md-12">
-            <form id="searchForm" class="d-flex">
-              <input type="text" class="form-control me-2" id="searchIdInput" placeholder="Buscar usuarios" aria-label="Buscar por ID">
-              <button type="submit" class="btn btn-primary">Buscar</button>
-            </form>
+            <input type="text" class="form-control me-2" id="searchInput" placeholder="Buscar por ID, Nombre o Apellido">
           </div>
         </div>
         <div id="usuariosContainer" class="table-responsive">
@@ -240,11 +259,11 @@
         }
       });
 
-      const searchForm = document.getElementById('searchForm');
-      searchForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        const searchInput = document.getElementById('searchIdInput').value.trim();
-        fetchUsuarios(searchInput);  // Llamar a fetchUsuarios con el término de búsqueda
+      // Búsqueda dinámica
+      const searchInput = document.getElementById('searchInput');
+      searchInput.addEventListener('input', function() {
+        const searchTerm = searchInput.value.trim();
+        fetchUsuarios(searchTerm);
       });
     });
 
@@ -264,48 +283,28 @@
           )
         );
 
-        if (usuariosFiltrados.length > 0) {
-          usuariosFiltrados.forEach(usuario => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${usuario.ID_US}</td>
-              <td>${usuario.ID_ROL}</td>
-              <td>${usuario.NOMBRE_US}</td>
-              <td>${usuario.APELLIDO_US}</td>
-              <td>${usuario.DEPARTAMENTO_US}</td>
-              <td>${usuario.CONTRASENA_US}</td>
-              <td>
-                <button class="btn btn-info btn-sm btn-edit" data-id="${usuario.ID_US}">Editar</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${usuario.ID_US}')">Eliminar</button>
-              </td>
-            `;
-            usuariosTableBody.appendChild(row);
-          });
-        } else {
-          alert('No se encontraron usuarios con ese término de búsqueda.');
-        }
+        // Mostrar los usuarios filtrados
+        usuariosFiltrados.forEach(usuario => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${usuario.ID_US}</td>
+            <td>${usuario.ID_ROL}</td>
+            <td>${usuario.NOMBRE_US}</td>
+            <td>${usuario.APELLIDO_US}</td>
+            <td>${usuario.DEPARTAMENTO_US}</td>
+            <td>${usuario.CONTRASENA_US}</td>
+            <td>
+              <button class="btn btn-info btn-sm btn-edit" data-id="${usuario.ID_US}">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${usuario.ID_US}')">Eliminar</button>
+            </td>
+          `;
+          usuariosTableBody.appendChild(row);
+        });
       } catch (err) {
         console.error('Error al obtener los usuarios:', err);
         alert('Error al obtener los usuarios');
       }
     }
-
-    // function editUsuario(id) {
-    //   fetch(`/api/usuarios-crud/${id}`)
-    //     .then(response => response.json())
-    //     .then(usuario => {
-    //       document.getElementById('idInput').value = usuario.ID_US;
-    //       document.getElementById('idRolInput').value = usuario.ID_ROL;
-    //       document.getElementById('nombreInput').value = usuario.NOMBRE_US;
-    //       document.getElementById('apellidoInput').value = usuario.APELLIDO_US;
-    //       document.getElementById('departamentoInput').value = usuario.DEPARTAMENTO_US;
-    //       document.getElementById('contrasenaInput').value = usuario.CONTRASENA_US;
-    //     })
-    //     .catch(err => {
-    //       console.error('Error al cargar los datos del usuario:', err);
-    //       alert('Error al cargar los datos del usuario');
-    //     });
-    // }
 
     // Manejar la edición de usuarios
     document.addEventListener('click', async function(event) {
