@@ -8,6 +8,8 @@
   <link href="../assets/img/logo.png" rel="icon">
   <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="../assets/css/main.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <header id="header" class="header fixed-top">
@@ -66,11 +68,32 @@
               <select id="periodoSelect" class="form-control" required>
                 <option value="" disabled selected>Seleccione un periodo</option>
               </select>
+            </div>
+            <div class="form-group">
+              <label for="filterTypeSelect">Filtrar por</label><br><br>
+              <select id="filterTypeSelect" class="form-control" required>
+                <option value="lista" selected>Lista</option>
+                <option value="departamento">Departamento</option>
+              </select>
             </div><br>
             <button type="submit" class="btn btn-danger">Consultar</button>
           </form>
 
-          <div id="resultContainer" style="display: none; margin-top: 20px;"></div>
+          <div id="resultContainer" style="display: none; margin-top: 20px;">
+            <!-- Aquí se inserta el periodo y los resultados -->
+            <h4 id="periodoHeader" class="text-center my-4"></h4>
+            <div id="resultTable"></div>
+            
+            <!-- Gráfica por Lista -->
+            <div id="listaChartContainer" style="width: 400px; height: 300px; margin: auto; display: none;">
+              <canvas id="listaChart"></canvas>
+            </div>
+            
+            <!-- Gráfica por Departamento -->
+            <div id="departamentoChartContainer" style="width: 400px; height: 300px; margin: auto; display: none;">
+              <canvas id="departamentoChart"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -106,50 +129,163 @@
         })
         .catch(err => console.error('Error al obtener los periodos:', err));
 
-      document.getElementById('resultForm').addEventListener('submit', function(event) {
-        event.preventDefault();
-        const periodo = document.getElementById('periodoSelect').value;
-        const resultContainer = document.getElementById('resultContainer');
+        document.getElementById('resultForm').addEventListener('submit', function(event) {
+          event.preventDefault();
+          
+          const periodo = document.getElementById('periodoSelect').value;
+          const filterType = document.getElementById('filterTypeSelect').value;
+          const resultContainer = document.getElementById('resultContainer');
+          const resultTable = document.getElementById('resultTable');
+          const periodoHeader = document.getElementById('periodoHeader');
+          
+          const listaChartContainer = document.getElementById('listaChartContainer');
+          const departamentoChartContainer = document.getElementById('departamentoChartContainer');
 
-        if (periodo) {
-          fetch(`/api/resultados?periodo=${periodo}`)
-            .then(response => response.json())
-            .then(data => {
-              resultContainer.innerHTML = `
-                <h4 class="text-center my-4">Resultados para el periodo ${periodo}</h4>
-                ${generateResultsHtml(data)}
-              `;
-              resultContainer.style.display = 'block';
-            })
-            .catch(err => console.error('Error al obtener los resultados:', err));
-        }
-      });
+          if (periodo) {
+            let apiUrl = `/api/resultados?periodo=${periodo}`;
+            
+            // Cambiar la URL de la API según el filtro seleccionado
+            if (filterType === 'departamento') {
+              apiUrl = `/api/resultados/departamento?periodo=${periodo}`;
+            }
+            
+            fetch(apiUrl)
+              .then(response => response.json())
+              .then(data => {
+                // Mostrar el periodo en el encabezado
+                periodoHeader.textContent = `Resultados para el periodo ${periodo}`;
+                
+                // Mostrar los resultados en la tabla
+                resultTable.innerHTML = generateResultsHtml(data, filterType);
+                resultContainer.style.display = 'block';
 
-      function generateResultsHtml(data) {
-        // Separar la lista "nulo"
-        const listasNormales = data.filter(lista => lista.nombre.toLowerCase() !== 'nulo');
-        const listaNulo = data.find(lista => lista.nombre.toLowerCase() === 'nulo');
-
-        // Crear HTML para listas normales
-        let html = '<table class="table table-bordered table-striped table-hover"><thead class="table-dark"><tr><th>Lista</th><th>Votos</th></tr></thead><tbody>';
-        listasNormales.forEach(lista => {
-          html += `<tr><td>${lista.nombre}</td><td>${lista.votos}</td></tr>`;
+                // Mostrar la gráfica correspondiente
+                if (filterType === 'lista') {
+                  listaChartContainer.style.display = 'block';
+                  departamentoChartContainer.style.display = 'none';
+                  createChart(data, 'lista');
+                } else if (filterType === 'departamento') {
+                  listaChartContainer.style.display = 'none';
+                  departamentoChartContainer.style.display = 'block';
+                  createChart(data, 'departamento');
+                }
+              })
+              .catch(err => console.error('Error al obtener los resultados:', err));
+          }
         });
 
-        // Agregar la lista "nulo" al final
-        if (listaNulo) {
-          html += `<tr><td>NULO</td><td>${listaNulo.votos}</td></tr>`;
+        function generateResultsHtml(data, filterType) {
+          let html = '';
+
+          if (filterType === 'lista') {
+            const listasNormales = data.filter(lista => lista.nombre.toLowerCase() !== 'nulo');
+            const listaNulo = data.find(lista => lista.nombre.toLowerCase() === 'nulo');
+
+            html = '<table class="table table-bordered table-striped table-hover"><thead class="table-dark"><tr><th>Lista</th><th>Votos</th></tr></thead><tbody>';
+            listasNormales.forEach(lista => {
+              html += `<tr><td>${lista.nombre}</td><td>${lista.votos}</td></tr>`;
+            });
+
+            if (listaNulo) {
+              html += `<tr><td>NULO</td><td>${listaNulo.votos}</td></tr>`;
+            }
+            
+            html += '</tbody></table>';
+
+            const ganador = listasNormales.reduce((max, lista) => (lista.votos > max.votos ? lista : max), listasNormales[0]);
+            html += `<p>Ganador: ${ganador.nombre} con ${ganador.votos} votos</p>`;
+          } else if (filterType === 'departamento') {
+            html = '<table class="table table-bordered table-striped table-hover"><thead class="table-dark"><tr><th>Departamento</th><th>Votos</th></tr></thead><tbody>';
+            data.forEach(departamento => {
+              html += `<tr><td>${departamento.nombre}</td><td>${departamento.votos}</td></tr>`;
+            });
+            html += '</tbody></table>';
+          }
+
+          return html;
         }
-        
-        html += '</tbody></table>';
 
-        // Determinar el ganador
-        const ganador = listasNormales.reduce((max, lista) => (lista.votos > max.votos ? lista : max), listasNormales[0]);
-        html += `<p>Ganador: ${ganador.nombre} con ${ganador.votos} votos</p>`;
+        function createChart(data, filterType) {
+          let labels = [];
+          let votosData = [];
 
-        return html;
+          if (filterType === 'lista') {
+              const listasNormales = data.filter(lista => lista.nombre.toLowerCase() !== 'nulo');
+              const listaNulo = data.find(lista => lista.nombre.toLowerCase() === 'nulo');
+
+              labels = listasNormales.map(lista => lista.nombre);
+              votosData = listasNormales.map(lista => lista.votos);
+
+              if (listaNulo) {
+                  labels.push('NULO');
+                  votosData.push(listaNulo.votos);
+              }
+          } else if (filterType === 'departamento') {
+              labels = data.map(departamento => departamento.nombre);
+              votosData = data.map(departamento => departamento.votos);
+          }
+
+          // Generar una lista de colores únicos para cada barra
+          const colors = generateUniqueColors(votosData.length);
+
+          const ctx = filterType === 'lista' ? document.getElementById('listaChart').getContext('2d') : document.getElementById('departamentoChart').getContext('2d');
+
+          // Destruir la gráfica anterior si existe
+          if (window.votosChart) {
+              window.votosChart.destroy();
+          }
+
+          // Crear la nueva gráfica
+          window.votosChart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                  labels: labels,
+                  datasets: [{
+                      label: 'Número de Votos',
+                      data: votosData,
+                      backgroundColor: colors,
+                      borderColor: colors,
+                      borderWidth: 1
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                      y: {
+                          beginAtZero: true,
+                          ticks: {
+                              stepSize: Math.ceil(Math.max(...votosData) / 10),
+                              callback: function(value) {
+                                  if (value >= 1000) {
+                                      return value / 1000 + 'k'; 
+                                  }
+                                  return value;
+                              }
+                          },
+                          max: Math.ceil(Math.max(...votosData) * 1.2)
+                      }
+                  },
+                  plugins: {
+                      legend: {
+                          display: false
+                      }
+                  }
+              }
+          });
       }
+    // Función para generar colores únicos
+    function generateUniqueColors(numColors) {
+        const colors = [];
+        const step = 360 / numColors; // Espaciar los colores en el círculo cromático
 
+        for (let i = 0; i < numColors; i++) {
+            const hue = i * step;
+            colors.push(`hsl(${hue}, 70%, 50%)`);
+        }
+
+        return colors;
+    }
     });
 
     document.addEventListener('DOMContentLoaded', (event) => {

@@ -146,7 +146,7 @@
         <div class="row mb-4">
           <div class="col-md-12">
             <form id="searchForm" class="d-flex">
-              <input type="text" class="form-control me-2" id="searchIdInput" placeholder="Buscar por ID" aria-label="Buscar por ID">
+              <input type="text" class="form-control me-2" id="searchIdInput" placeholder="Buscar usuarios" aria-label="Buscar por ID">
               <button type="submit" class="btn btn-primary">Buscar</button>
             </form>
           </div>
@@ -241,75 +241,52 @@
       });
 
       const searchForm = document.getElementById('searchForm');
-      searchForm.addEventListener('submit', async function(event) {
+      searchForm.addEventListener('submit', function(event) {
         event.preventDefault();
-        const searchId = document.getElementById('searchIdInput').value.trim();
-        if (searchId) {
-          fetchUsuarioById(searchId);
-        } else {
-          fetchUsuarios();
-        }
+        const searchInput = document.getElementById('searchIdInput').value.trim();
+        fetchUsuarios(searchInput);  // Llamar a fetchUsuarios con el término de búsqueda
       });
     });
 
-    async function fetchUsuarios() {
+    async function fetchUsuarios(searchTerm = '') {
       try {
         const response = await fetch('/api/usuarios-crud');
         const usuarios = await response.json();
         const usuariosTableBody = document.getElementById('usuariosTableBody');
         usuariosTableBody.innerHTML = '';
 
-        usuarios.forEach(usuario => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${usuario.ID_US}</td>
-            <td>${usuario.ID_ROL}</td>
-            <td>${usuario.NOMBRE_US}</td>
-            <td>${usuario.APELLIDO_US}</td>
-            <td>${usuario.DEPARTAMENTO_US}</td>
-            <td>${usuario.CONTRASENA_US}</td>
-            <td>
-              <button class="btn btn-info btn-sm btn-edit" data-id="${usuario.ID_US}">Editar</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${usuario.ID_US}')">Eliminar</button>
-            </td>
-          `;
-          usuariosTableBody.appendChild(row);
-        });
+        // Filtrar usuarios por ID, nombre o apellido si searchTerm no es vacío
+        const usuariosFiltrados = usuarios.filter(usuario => 
+          usuario.ID_US !== 'nulo' && (
+            usuario.ID_US.includes(searchTerm) ||
+            usuario.NOMBRE_US.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            usuario.APELLIDO_US.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        );
+
+        if (usuariosFiltrados.length > 0) {
+          usuariosFiltrados.forEach(usuario => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${usuario.ID_US}</td>
+              <td>${usuario.ID_ROL}</td>
+              <td>${usuario.NOMBRE_US}</td>
+              <td>${usuario.APELLIDO_US}</td>
+              <td>${usuario.DEPARTAMENTO_US}</td>
+              <td>${usuario.CONTRASENA_US}</td>
+              <td>
+                <button class="btn btn-info btn-sm btn-edit" data-id="${usuario.ID_US}">Editar</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${usuario.ID_US}')">Eliminar</button>
+              </td>
+            `;
+            usuariosTableBody.appendChild(row);
+          });
+        } else {
+          alert('No se encontraron usuarios con ese término de búsqueda.');
+        }
       } catch (err) {
         console.error('Error al obtener los usuarios:', err);
         alert('Error al obtener los usuarios');
-      }
-    }
-
-    async function fetchUsuarioById(id) {
-      try {
-        const response = await fetch(`/api/usuarios-crud/${id}`);
-        const usuario = await response.json();
-        const usuariosTableBody = document.getElementById('usuariosTableBody');
-        usuariosTableBody.innerHTML = '';
-
-        if (usuario) {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${usuario.ID_US}</td>
-            <td>${usuario.ID_ROL}</td>
-            <td>${usuario.NOMBRE_US}</td>
-            <td>${usuario.APELLIDO_US}</td>
-            <td>${usuario.DEPARTAMENTO_US}</td>
-            <td>${usuario.CONTRASENA_US}</td>
-            <td>
-              <button class="btn btn-info btn-sm btn-edit" data-id="${usuario.ID_US}">Editar</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${usuario.ID_US}')">Eliminar</button>
-            </td>
-          `;
-          usuariosTableBody.appendChild(row);
-        } else {
-          alert('Usuario no encontrado');
-          fetchUsuarios();
-        }
-      } catch (err) {
-        console.error('Error al buscar el usuario:', err);
-        alert('Error al buscar el usuario');
       }
     }
 
@@ -411,8 +388,18 @@
         // Actualizar el contenido del elemento con el ID 'username-display'
         document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
       }
+
       // Manejar el clic en el botón de "Cerrar Sesión"
       document.getElementById('logout-button').addEventListener('click', function() {
+        // Obtener el periodo de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodo = urlParams.get('periodo');
+
+        // Guardar el periodo en el LocalStorage solo si es válido
+        if (periodo && periodo.trim() !== '') {
+          localStorage.setItem('periodo', periodo);
+        }
+
         // Borrar las variables 'rol' y 'usuario' del LocalStorage
         localStorage.removeItem('rol');
         localStorage.removeItem('usuario');
@@ -420,7 +407,7 @@
         // Redireccionar al index
         window.location.href = '/';
       });
-    });  
+    });
   </script>  
   
 </body>

@@ -247,8 +247,9 @@ app.post('/upload', upload.any(), (req, res) => {
 
 // Ruta para el inicio de sesión
 app.post('/login', async (req, res) => {
-  const { username, password,periodo } = req.body;
+  const { username, password, periodo } = req.body;
   console.log(`Usuario: ${username}, Contraseña: ${password}, Periodo: ${periodo}`);
+  
   if (!username || !password) {
     res.send('<script>alert("Usuario y contraseña son requeridos"); window.location.href="/";</script>');
     return;
@@ -257,32 +258,50 @@ app.post('/login', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     const result = await connection.execute(
-      `SELECT ID_ROL FROM USUARIOS WHERE ID_US = :username AND CONTRASENA_US = :password`,
+      `SELECT ID_ROL, ESTADO_US FROM USUARIOS WHERE ID_US = :username AND CONTRASENA_US = :password`,
       [username, password]
     );
 
     if (result.rows.length > 0) {
-      const role = result.rows[0][0];
+      const [role, estado] = result.rows[0];
+
+      if (estado === 0) {
+        res.send('<script>alert("Su cuenta está inactiva. No tiene permiso para acceder."); window.location.href="/";</script>');
+        await connection.close();
+        return;
+      }
+
       const usuario = username;
       console.log('Usuario autenticado:', { role });
 
-      console.log(periodo);
-
       res.send(`
         <script>
-          localStorage.setItem('rol', '${role}');
-          localStorage.setItem('usuario', '${usuario}');
-          if (${role} === 1) {
-            window.location.href = '/html/configuracion.html';
-          } else if (${role} === 2) {
-            // Redirigir a votacionADUFA.html con el parámetro 'periodo'
-            window.location.href = '/html/votacionADUFA.html?periodo=${periodo}';
-          } else {
-            alert("Rol desconocido");
+          const storedPeriodo = localStorage.getItem('periodo');
+
+          // Verificar si el nuevo periodo es diferente del almacenado
+          if (storedPeriodo !== '${periodo}' && '${periodo}'.trim() !== '') {
+            localStorage.setItem('periodo', '${periodo}');
+          }
+
+          const finalPeriodo = localStorage.getItem('periodo');
+          if (!finalPeriodo || finalPeriodo.trim() === '') {
+            alert("El periodo no se encuentra. Por favor, vuelva a intentarlo.");
             window.location.href = '/';
+          } else {
+            localStorage.setItem('rol', '${role}');
+            localStorage.setItem('usuario', '${usuario}');
+            if (${role} === 1) {
+              window.location.href = '/html/configuracion.html';
+            } else if (${role} === 2) {
+              // Redirigir a votacionADUFA.html con el parámetro 'periodo' restaurado
+              window.location.href = '/html/votacionADUFA.html?periodo=' + finalPeriodo;
+            } else {
+              alert("Rol desconocido");
+              window.location.href = '/';
+            }
           }
         </script>
-        `);
+      `);
     } else {
       res.send('<script>alert("Credenciales incorrectas"); window.location.href="/";</script>');
     }
@@ -335,33 +354,34 @@ app.post('/guardar-candidatos', async (req, res) => {
         const candidato = lista[dignidad];
         
         if (candidato) {
-          // Separar el nombre y apellido del candidato
-          const [nombre, apellido] = candidato.split(', '); // Separar por coma
+          const nombreApellido = candidato.split(', ');
 
-          // Limpiar espacios alrededor de los nombres
-          const cleanNombre = nombre.trim();
-          const cleanApellido = apellido.trim();
+          if (nombreApellido.length === 2) {  // Asegurarse de que haya un nombre y un apellido
+            const cleanNombre = nombreApellido[0].trim();
+            const cleanApellido = nombreApellido[1].trim();
 
-          // Consulta para obtener el ID_US del candidato
-          const result = await connection.execute(
-            `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
-            [cleanNombre, cleanApellido]
-          );
+            // Consulta para obtener el ID_US del candidato
+            const result = await connection.execute(
+              `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
+              [cleanNombre, cleanApellido]
+            );
 
-          if (result.rows.length > 0) {
-            const id_us = result.rows[0][0];
+            if (result.rows.length > 0) {
+              const id_us = result.rows[0][0];
 
-            // Insertar en la tabla CANDIDATOS
-            await connection.execute(insertCandidatoQuery, {
-              id_us: id_us,
-              id_lista: id_lista,
-              periodo_postulacion: period,
-              dignidad_cand: dignidad,
-              estado_cand: estadoCandidato
-            });
+              // Insertar en la tabla CANDIDATOS
+              await connection.execute(insertCandidatoQuery, {
+                id_us: id_us,
+                id_lista: id_lista,
+                periodo_postulacion: period,
+                dignidad_cand: dignidad,
+                estado_cand: estadoCandidato
+              });
+            } else {
+              console.log(`No se encontró el usuario con nombre ${cleanNombre} y apellido ${cleanApellido}`);
+            }
           } else {
-            console.log(`No se encontró el usuario con nombre ${cleanNombre} y apellido ${cleanApellido}`);
-            // Puedes manejar aquí lo que deseas hacer si no se encuentra el usuario
+            console.log(`El formato del candidato ${candidato} es incorrecto. Debe ser 'Nombre, Apellido'.`);
           }
         }
       }
@@ -371,32 +391,34 @@ app.post('/guardar-candidatos', async (req, res) => {
         const candidato = lista.vocalesPrincipales[i];
         
         if (candidato) {
-          // Separar el nombre y apellido del candidato
-          const [nombre, apellido] = candidato.split(', '); // Separar por coma
+          const nombreApellido = candidato.split(', ');
 
-          // Limpiar espacios alrededor de los nombres
-          const cleanNombre = nombre.trim();
-          const cleanApellido = apellido.trim();
+          if (nombreApellido.length === 2) {  // Asegurarse de que haya un nombre y un apellido
+            const cleanNombre = nombreApellido[0].trim();
+            const cleanApellido = nombreApellido[1].trim();
 
-          // Consulta para obtener el ID_US del candidato
-          const result = await connection.execute(
-            `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
-            [cleanNombre, cleanApellido]
-          );
+            // Consulta para obtener el ID_US del candidato
+            const result = await connection.execute(
+              `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
+              [cleanNombre, cleanApellido]
+            );
 
-          if (result.rows.length > 0) {
-            const id_us = result.rows[0][0];
-            // Insertar en la tabla CANDIDATOS
-            await connection.execute(insertCandidatoQuery, {
-              id_us: id_us,
-              id_lista: id_lista,
-              periodo_postulacion: period,
-              dignidad_cand: `vocalPrincipal${i + 1}`,
-              estado_cand: estadoCandidato
-            });
+            if (result.rows.length > 0) {
+              const id_us = result.rows[0][0];
+
+              // Insertar en la tabla CANDIDATOS
+              await connection.execute(insertCandidatoQuery, {
+                id_us: id_us,
+                id_lista: id_lista,
+                periodo_postulacion: period,
+                dignidad_cand: `vocalPrincipal${i + 1}`,
+                estado_cand: estadoCandidato
+              });
+            } else {
+              console.log(`No se encontró el usuario con nombre ${cleanNombre} y apellido ${cleanApellido}`);
+            }
           } else {
-            console.log(`No se encontró el usuario con nombre ${cleanNombre} y apellido ${cleanApellido}`);
-            // Puedes manejar aquí lo que deseas hacer si no se encuentra el usuario
+            console.log(`El formato del candidato ${candidato} es incorrecto. Debe ser 'Nombre, Apellido'.`);
           }
         }
       }
@@ -406,32 +428,34 @@ app.post('/guardar-candidatos', async (req, res) => {
         const candidato = lista.vocalesSuplentes[i];
         
         if (candidato) {
-          // Separar el nombre y apellido del candidato
-          const [nombre, apellido] = candidato.split(', '); // Separar por coma
+          const nombreApellido = candidato.split(', ');
 
-          // Limpiar espacios alrededor de los nombres
-          const cleanNombre = nombre.trim();
-          const cleanApellido = apellido.trim();
+          if (nombreApellido.length === 2) {  // Asegurarse de que haya un nombre y un apellido
+            const cleanNombre = nombreApellido[0].trim();
+            const cleanApellido = nombreApellido[1].trim();
 
-          // Consulta para obtener el ID_US del candidato
-          const result = await connection.execute(
-            `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
-            [cleanNombre, cleanApellido]
-          );
+            // Consulta para obtener el ID_US del candidato
+            const result = await connection.execute(
+              `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
+              [cleanNombre, cleanApellido]
+            );
 
-          if (result.rows.length > 0) {
-            const id_us = result.rows[0][0];
-            // Insertar en la tabla CANDIDATOS
-            await connection.execute(insertCandidatoQuery, {
-              id_us: id_us,
-              id_lista: id_lista,
-              periodo_postulacion: period,
-              dignidad_cand: `vocalSuplente${i + 1}`,
-              estado_cand: estadoCandidato
-            });
+            if (result.rows.length > 0) {
+              const id_us = result.rows[0][0];
+
+              // Insertar en la tabla CANDIDATOS
+              await connection.execute(insertCandidatoQuery, {
+                id_us: id_us,
+                id_lista: id_lista,
+                periodo_postulacion: period,
+                dignidad_cand: `vocalSuplente${i + 1}`,
+                estado_cand: estadoCandidato
+              });
+            } else {
+              console.log(`No se encontró el usuario con nombre ${cleanNombre} y apellido ${cleanApellido}`);
+            }
           } else {
-            console.log(`No se encontró el usuario con nombre ${cleanNombre} y apellido ${cleanApellido}`);
-            // Puedes manejar aquí lo que deseas hacer si no se encuentra el usuario
+            console.log(`El formato del candidato ${candidato} es incorrecto. Debe ser 'Nombre, Apellido'.`);
           }
         }
       }
@@ -592,24 +616,25 @@ app.get('/verificar-voto', async (req, res) => {
 });
 
 
-// Ruta para obtener los usuarios
+// Ruta para obtener usuarios con id_rol = 2 y estado_us = 1
 app.get('/api/usuarios', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     const result = await connection.execute(
-      `SELECT NOMBRE_US, APELLIDO_US FROM USUARIOS WHERE ID_US <> 'nulo'`
+      `SELECT ID_US, NOMBRE_US, APELLIDO_US FROM USUARIOS WHERE ID_ROL = 2 AND ESTADO_US = 1`
     );
-    await connection.close();
 
     const usuarios = result.rows.map(row => ({
-      nombres: row[0],
-      apellidos: row[1]
+      id: row[0],
+      nombres: row[1],
+      apellidos: row[2]
     }));
 
     res.json(usuarios);
+    await connection.close();
   } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).send('Error al obtener los usuarios');
+    console.error('Error al obtener usuarios:', err);
+    res.status(500).send('Error al obtener usuarios');
   }
 });
 
@@ -821,7 +846,33 @@ app.get('/api/query/:roleId', async (req, res) => {
   }
 });
 
+app.get('/api/resultados/departamento', async (req, res) => {
+  const periodo = req.query.periodo;
 
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    
+    const result = await connection.execute(
+      `SELECT U.DEPARTAMENTO_US AS nombre, COUNT(V.ID_US) AS votos
+       FROM VOTOS V
+       JOIN USUARIOS U ON V.ID_US = U.ID_US
+       WHERE V.PERIODO_POSTULACION = :periodo
+       GROUP BY U.DEPARTAMENTO_US`,
+      [periodo]
+    );
+
+    const data = result.rows.map(row => ({
+      nombre: row[0],
+      votos: row[1]
+    }));
+    
+    res.json(data);
+    await connection.close();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error en el servidor');
+  }
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));

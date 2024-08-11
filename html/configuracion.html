@@ -430,45 +430,57 @@
         event.preventDefault();
 
         const listas = [];
-        
+
         for (let lista = 1; lista <= numListas; lista++) {
-          const listaData = {
-            nombreLista: document.getElementById(`nombreLista${lista}`).value,
-            presidente: document.getElementById(`presidenteLista${lista}`).value,
-            vicepresidente: document.getElementById(`vicepresidenteLista${lista}`).value,
-            secretario: document.getElementById(`secretarioLista${lista}`).value,
-            tesorero: document.getElementById(`tesoreroLista${lista}`).value,
-            sindico: document.getElementById(`sindicoLista${lista}`).value,
-            vocalesPrincipales: [],
-            vocalesSuplentes: []
-          };
+            const presidenteSelect = document.getElementById(`presidenteLista${lista}`);
+            const vicepresidenteSelect = document.getElementById(`vicepresidenteLista${lista}`);
+            const secretarioSelect = document.getElementById(`secretarioLista${lista}`);
+            const tesoreroSelect = document.getElementById(`tesoreroLista${lista}`);
+            const sindicoSelect = document.getElementById(`sindicoLista${lista}`);
 
-          for (let i = 1; i <= 3; i++) {
-            listaData.vocalesPrincipales.push(document.getElementById(`vocalPrincipal${i}Lista${lista}`).value);
-          }
+            const formatName = (selectElement) => {
+                const fullName = selectElement.options[selectElement.selectedIndex].text.trim();
+                const nameParts = fullName.split(' ');
+                const lastName = nameParts.slice(-2).join(' ');
+                const firstName = nameParts.slice(0, -2).join(' ');
+                return `${firstName}, ${lastName}`;
+            };
 
-          for (let i = 1; i <= 3; i++) {
-            listaData.vocalesSuplentes.push(document.getElementById(`vocalSuplente${i}Lista${lista}`).value);
-          }
+            const listaData = {
+                nombreLista: document.getElementById(`nombreLista${lista}`).value,
+                presidente: formatName(presidenteSelect), // Guardar en formato "Nombres, Apellidos"
+                vicepresidente: formatName(vicepresidenteSelect),
+                secretario: formatName(secretarioSelect),
+                tesorero: formatName(tesoreroSelect),
+                sindico: formatName(sindicoSelect),
+                vocalesPrincipales: [],
+                vocalesSuplentes: []
+            };
 
-          listas.push(listaData);
+            for (let i = 1; i <= 3; i++) {
+                const vocalPrincipalSelect = document.getElementById(`vocalPrincipal${i}Lista${lista}`);
+                listaData.vocalesPrincipales.push(formatName(vocalPrincipalSelect));
+            }
+
+            for (let i = 1; i <= 3; i++) {
+                const vocalSuplenteSelect = document.getElementById(`vocalSuplente${i}Lista${lista}`);
+                listaData.vocalesSuplentes.push(formatName(vocalSuplenteSelect));
+            }
+
+            listas.push(listaData);
         }
 
-        const datos = {
-          periodo: periodo,
-          listas: listas
+        const formData = {
+            periodo: periodo,
+            listas: listas
         };
 
-        // Imprimir formData en la consola
-        console.log('formData:', datos);
+        // Guardar el formData en el localStorage
+        localStorage.setItem('formData', JSON.stringify(formData));
 
-        localStorage.setItem('formData', JSON.stringify(datos));
-
-        // Llamar a la función para guardar las imágenes
-        saveImages(periodo);
-
+        // Redirigir o realizar alguna acción posterior
         window.location.href = 'votacion.html';
-      });
+    });
 
       function saveImages(periodo) {
         // const form = document.getElementById('secondForm');
@@ -515,8 +527,8 @@
           userSelects.forEach(select => {
             data.forEach(user => {
               const option = document.createElement('option');
-              option.value = `${user.nombres}, ${user.apellidos}`;
-              option.text = `${user.nombres}, ${user.apellidos}`;
+              option.value = `${user.id}`;  // Aquí asignas el ID del usuario al value
+              option.text = `${user.nombres} ${user.apellidos}`;
               select.appendChild(option);
             });
           });
@@ -533,8 +545,18 @@
         // Actualizar el contenido del elemento con el ID 'username-display'
         document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
       }
+
       // Manejar el clic en el botón de "Cerrar Sesión"
       document.getElementById('logout-button').addEventListener('click', function() {
+        // Obtener el periodo de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodo = urlParams.get('periodo');
+
+        // Guardar el periodo en el LocalStorage solo si es válido
+        if (periodo && periodo.trim() !== '') {
+          localStorage.setItem('periodo', periodo);
+        }
+
         // Borrar las variables 'rol' y 'usuario' del LocalStorage
         localStorage.removeItem('rol');
         localStorage.removeItem('usuario');
@@ -542,7 +564,7 @@
         // Redireccionar al index
         window.location.href = '/';
       });
-    });  
+    });
   </script>
 </body>
 </html>

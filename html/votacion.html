@@ -230,8 +230,18 @@
         // Actualizar el contenido del elemento con el ID 'username-display'
         document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
       }
+
       // Manejar el clic en el botón de "Cerrar Sesión"
       document.getElementById('logout-button').addEventListener('click', function() {
+        // Obtener el periodo de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodo = urlParams.get('periodo');
+
+        // Guardar el periodo en el LocalStorage solo si es válido
+        if (periodo && periodo.trim() !== '') {
+          localStorage.setItem('periodo', periodo);
+        }
+
         // Borrar las variables 'rol' y 'usuario' del LocalStorage
         localStorage.removeItem('rol');
         localStorage.removeItem('usuario');
