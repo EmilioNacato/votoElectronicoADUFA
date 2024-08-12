@@ -147,7 +147,7 @@ app.post('/enviar-credenciales', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     const result = await connection.execute(
-      `SELECT ID_US, EMAIL_US FROM USUARIOS WHERE ID_ROL = 2`
+      `SELECT ID_US, EMAIL_US FROM USUARIOS WHERE ID_ROL = 2 AND ESTADO_US = 1`
     );
 
     const usuarios = result.rows;
