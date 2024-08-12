@@ -258,8 +258,8 @@
         const messageContainer = document.createElement('div');
         messageContainer.classList.add('alert', 'alert-info', 'mt-3');
         messageContainer.innerHTML = `<strong>¡Listo!</strong><br>Ha generado el formulario exitosamente para el periodo "${periodo}". El enlace a compartir será:
-            <a id="enlaceVotacion" href="localhost:40000/html/votacionADUFA.html?periodo=${periodo}" target="_blank">
-              localhost:40000/html/votacionADUFA.html?periodo=${periodo}
+            <a id="enlaceVotacion" href="129.213.52.243:40000/html/votacionADUFA.html?periodo=${periodo}" target="_blank">
+              129.213.52.243:40000/html/votacionADUFA.html?periodo=${periodo}
             </a><br><br>
             <button id="btnCopiarEnlace" class="read-more" style="text-align: center;">Copiar enlace</button>; 
             <button id="btnEnviarCredenciales" class="read-more" style="text-align: center;">Enviar Credenciales</button>`;
@@ -291,7 +291,7 @@
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ link: `http://localhost:40000/html/votacionADUFA.html?periodo=${periodo}` })
+          body: JSON.stringify({ link: `http://129.213.52.243:40000/html/votacionADUFA.html?periodo=${periodo}` })
         })
         .then(response => response.json())
         .then(data => {
