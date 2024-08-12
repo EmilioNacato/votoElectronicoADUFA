@@ -282,29 +282,30 @@ app.post('/login', async (req, res) => {
 
       res.send(`
         <script>
-          const storedPeriodo = localStorage.getItem('periodo');
+          localStorage.setItem('rol', '${role}');
+          localStorage.setItem('usuario', '${usuario}');
 
-          // Verificar si el nuevo periodo es diferente del almacenado
-          if (storedPeriodo !== '${periodo}' && '${periodo}'.trim() !== '') {
-            localStorage.setItem('periodo', '${periodo}');
-          }
+          if (${role} === 1) {
+            window.location.href = '/html/configuracion.html';
+          } else if (${role} === 2) {
+            const storedPeriodo = localStorage.getItem('periodo');
 
-          const finalPeriodo = localStorage.getItem('periodo');
-          if (!finalPeriodo || finalPeriodo.trim() === '') {
-            alert("El periodo no se encuentra. Por favor, vuelva a intentarlo.");
-            window.location.href = '/';
-          } else {
-            localStorage.setItem('rol', '${role}');
-            localStorage.setItem('usuario', '${usuario}');
-            if (${role} === 1) {
-              window.location.href = '/html/configuracion.html';
-            } else if (${role} === 2) {
+            // Verificar si el nuevo periodo es diferente del almacenado
+            if (storedPeriodo !== '${periodo}' && '${periodo}'.trim() !== '') {
+              localStorage.setItem('periodo', '${periodo}');
+            }
+
+            const finalPeriodo = localStorage.getItem('periodo');
+            if (!finalPeriodo || finalPeriodo.trim() === '') {
+              alert("El periodo no se encuentra. Por favor, vuelva a intentarlo.");
+              window.location.href = '/';
+            } else {
               // Redirigir a votacionADUFA.html con el parámetro 'periodo' restaurado
               window.location.href = '/html/votacionADUFA.html?periodo=' + finalPeriodo;
-            } else {
-              alert("Rol desconocido");
-              window.location.href = '/';
             }
+          } else {
+            alert("Rol desconocido");
+            window.location.href = '/';
           }
         </script>
       `);
@@ -318,6 +319,7 @@ app.post('/login', async (req, res) => {
     res.status(500).send('Error en el servidor');
   }
 });
+
 
 app.post('/guardar-candidatos', async (req, res) => {
   const formData = req.body;
