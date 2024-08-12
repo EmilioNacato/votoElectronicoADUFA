@@ -62,11 +62,17 @@ app.use(express.static('.'));
 
 
 // Configuración de la base de datos
-// Esto es una prueba
+// const dbConfig = {
+//   user: 'C##emilioadmin',
+//   password: 'xXsCzXQjS39',
+//   connectString: 'localhost/XE'
+// };
+
+// Configuración de la base de datos
 const dbConfig = {
-  user: 'C##emilioadmin',
-  password: 'xXsCzXQjS39',
-  connectString: 'localhost/XE'
+  user: 'ADMIN', // Usuario de la base de datos
+  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
+  connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
 };
 
 // Función para enviar correos con un retardo de 10 segundos
