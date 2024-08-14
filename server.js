@@ -488,49 +488,46 @@ app.post('/guardar-candidatos', async (req, res) => {
 
 
 app.post('/guardar-votos', async (req, res) => {
+  let connection;
   try {
     const { usuario, formData } = req.body;
-    const connection = await oracledb.getConnection(dbConfig);
+    const period = formData.periodo;
+    const id_lista = formData.idLista;
+    const aceptaAuditoria = formData.aceptaAuditoria ? 1 : 0;
 
-    // Verificar si el votante ya existe en la tabla VOTANTES
-    const checkVotanteQuery = `SELECT ID_US FROM VOTANTES WHERE ID_US = :usuario`;
-    const result = await connection.execute(checkVotanteQuery, [usuario]);
+    connection = await oracledb.getConnection(dbConfig);
 
-    if (result.rows.length == 0) {
-      // Si el votante no existe, insertar el votante en la tabla VOTANTES
+    // Verificar si el votante ya existe en la tabla VOTANTES para el periodo actual
+    const checkVotanteQuery = `SELECT ID_US FROM VOTANTES WHERE ID_US = :usuario AND PERIODO = :periodo`;
+    const result = await connection.execute(checkVotanteQuery, [usuario, period]);
+
+    if (result.rows.length === 0) {
       await connection.execute(
-        `INSERT INTO VOTANTES (ID_US, ESTADO_VOT) VALUES (:usuario, 1)`,
-        [usuario]
+        `INSERT INTO VOTANTES (ID_US, ESTADO_VOT, PERIODO) VALUES (:usuario, 1, :periodo)`,
+        [usuario, period]
       );
       console.log('Se ha insertado el votante en la tabla VOTANTES.');
     } else {
-      console.log('El votante ya existe en la tabla VOTANTES.');
+      console.log('El votante ya existe en la tabla VOTANTES para este periodo.');
     }
 
+    // Inserción del voto en la tabla VOTOS
     const insertQuery = `INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
                          VALUES (:idLista, :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
 
     const insertNuloQuery = `INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
                              VALUES ('nulo', :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
 
-    const vot_id_us = usuario; // Usuario de local storage
-    const period = formData.periodo;
-    const id_lista = formData.idLista;
-    const aceptaAuditoria = formData.aceptaAuditoria ? 1 : 0;
-
     if (id_lista.toLowerCase() === 'nulo') {
       console.log("Se insertará voto nulo");
-      await connection.execute(insertNuloQuery, [period, vot_id_us, aceptaAuditoria]);
+      await connection.execute(insertNuloQuery, [period, usuario, aceptaAuditoria]);
     } else {
-      await connection.execute(insertQuery, [id_lista, period, vot_id_us, aceptaAuditoria]);
+      await connection.execute(insertQuery, [id_lista, period, usuario, aceptaAuditoria]);
     }
 
-    // Confirmar la transacción
     await connection.commit();
-    await connection.close();
-    res.status(200).json({ message: 'Su voto fue guardado correctamente' });
 
-    // Enviar correo de confirmación
+    // Enviar correo de confirmación solo si el voto fue guardado correctamente
     const emailQuery = `SELECT EMAIL_US FROM USUARIOS WHERE ID_US = :usuario`;
     const emailResult = await connection.execute(emailQuery, [usuario]);
     const emailUsuario = emailResult.rows[0][0];
@@ -562,9 +559,20 @@ app.post('/guardar-votos', async (req, res) => {
 
   } catch (err) {
     console.error('Error al guardar los votos en la base de datos:', err);
-    res.status(500).send('Error en el servidor');
+    if (!res.headersSent) {
+      res.status(500).send('Error en el servidor');
+    }
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error al cerrar la conexión:', err);
+      }
+    }
   }
 });
+
 
 
 // Ruta para obtener candidatos por período
