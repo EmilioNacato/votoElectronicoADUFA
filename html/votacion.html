@@ -261,25 +261,29 @@
             <a id="enlaceVotacion" href="129.213.52.243:40000/html/votacionADUFA.html?periodo=${periodo}" target="_blank">
               129.213.52.243:40000/html/votacionADUFA.html?periodo=${periodo}
             </a><br><br>
-            <button id="btnCopiarEnlace" class="read-more" style="text-align: center;">Copiar enlace</button>; 
+            <button id="btnCopiarEnlace" class="read-more" style="text-align: center;">Copiar enlace</button> 
             <button id="btnEnviarCredenciales" class="read-more" style="text-align: center;">Enviar Credenciales</button>`;
 
         document.querySelector('.form-container').appendChild(messageContainer); 
         // Event listener para el botón de copiar enlace
-        // Dentro de la función MensajeGeneracion
         const btnCopiarEnlace = document.getElementById('btnCopiarEnlace');
         btnCopiarEnlace.addEventListener('click', function() {
             const enlaceVotacion = document.getElementById('enlaceVotacion');
             const enlace = enlaceVotacion.href;
 
-            // Copiar el enlace al portapapeles
-            navigator.clipboard.writeText(enlace)
-                .then(() => {
-                    alert('¡Enlace copiado al portapapeles!');
-                })
-                .catch(err => {
-                    console.error('Error al copiar enlace: ', err);
-                });
+            // Solución alternativa para copiar el enlace al portapapeles
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = enlace;
+            document.body.appendChild(tempTextarea);
+
+            // Seleccionar el texto y copiarlo al portapapeles
+            tempTextarea.select();
+            document.execCommand('copy');
+
+            // Eliminar el elemento temporal
+            document.body.removeChild(tempTextarea);
+
+            alert('¡Enlace copiado al portapapeles!');
         });
       } catch (error) {
         console.error('Error al verificar voto:', error);
