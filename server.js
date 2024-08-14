@@ -14,8 +14,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto'); 
-
-
+const axios = require('axios');
 
 const app = express();
 const PORT = 40000;
@@ -517,6 +516,31 @@ app.post('/guardar-votos', async (req, res) => {
 
     const insertNuloQuery = `INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
                              VALUES ('nulo', :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
+
+    // Llamada a la Blockchain platform de OCI
+    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:SafetyCar16!').toString('base64');
+    const blockchainResponse = await axios.post('https://votoblockchain-3-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
+      chaincode: "data_synchronization_votos",
+      args: [
+        "createVotos",
+        JSON.stringify({
+          idLista: id_lista,
+          periodoPostulacion: period,
+          idUs: usuario,
+          fechaVotacion: new Date().toISOString().split('T')[0],
+          aceptaAuditoria: aceptaAuditoria
+        })
+      ],
+      timeout: 18000,
+      sync: true
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${credentials}` // Autenticación por credenciales
+      }
+    });
+
+    console.log('Blockchain response:', blockchainResponse.data);
 
     if (id_lista.toLowerCase() === 'nulo') {
       console.log("Se insertará voto nulo");
