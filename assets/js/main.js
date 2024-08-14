@@ -202,3 +202,10 @@
   }
 
 })();
+
+// Controlar la visibilidad del menú móvil y cambiar el icono de la barra de hamburguesa
+document.querySelector('.mobile-nav-toggle').addEventListener('click', function() {
+  const navMenu = document.querySelector('.navmenu ul');
+  navMenu.classList.toggle('open');
+  this.classList.toggle('open');
+});

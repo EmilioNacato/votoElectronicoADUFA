@@ -44,14 +44,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Configuración del transportador de nodemailer
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-      user: 'emilionacato75@gmail.com',
-      pass: 'hjqkxseleqyrrdaj' 
-  }
-});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -61,19 +53,30 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('.'));
 
 
-// Configuración de la base de datos
-// const dbConfig = {
-//   user: 'C##emilioadmin',
-//   password: 'xXsCzXQjS39',
-//   connectString: 'localhost/XE'
-// };
+// Configuración del transportador de nodemailer
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+      user: 'emilionacato75@gmail.com',
+      pass: 'hjqkxseleqyrrdaj' 
+  }
+});
+
+
 
 // Configuración de la base de datos
 const dbConfig = {
-  user: 'ADMIN', // Usuario de la base de datos
-  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
+  user: 'C##emilioadmin',
+  password: 'xXsCzXQjS39',
+  connectString: 'localhost/XE'
 };
+
+// // Configuración de la base de datos
+// const dbConfig = {
+//   user: 'ADMIN', // Usuario de la base de datos
+//   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
+//   connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
+// };
 
 // Función para enviar correos con un retardo de 10 segundos
 function enviarCorreoConRetardo(transporter, mailOptions, delay) {
