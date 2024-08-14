@@ -530,6 +530,36 @@ app.post('/guardar-votos', async (req, res) => {
     await connection.close();
     res.status(200).json({ message: 'Su voto fue guardado correctamente' });
 
+    // Enviar correo de confirmación
+    const emailQuery = `SELECT EMAIL_US FROM USUARIOS WHERE ID_US = :usuario`;
+    const emailResult = await connection.execute(emailQuery, [usuario]);
+    const emailUsuario = emailResult.rows[0][0];
+
+    const mailOptions = {
+      from: 'emilionacato75@gmail.com',
+      to: emailUsuario,
+      subject: 'Confirmación de Voto Registrado',
+      text: `Estimado(a) usuario,
+
+  Le confirmamos que su voto ha sido registrado exitosamente en el período electoral "${period}".
+
+  Gracias por participar en este proceso de elecciones.
+
+  Saludos cordiales,
+
+  Asociación de Docentes de las Fuerzas Armadas "ADUFA"`
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Error al enviar el correo de confirmación:', error);
+      } else {
+        console.log('Correo de confirmación enviado:', info.response);
+      }
+    });
+
+    res.status(200).json({ message: 'Su voto fue guardado correctamente y se ha enviado un correo de confirmación.' });
+
   } catch (err) {
     console.error('Error al guardar los votos en la base de datos:', err);
     res.status(500).send('Error en el servidor');
