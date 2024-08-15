@@ -306,101 +306,103 @@
       const numListas = parseInt(document.getElementById('numListas').value);
       const fechaPublicacion = document.getElementById('fechaPublicacion').value;
 
-      fetch('/guardar-configuracion', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ periodo, numListas, fechaPublicacion })
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            alert('Configuración guardada correctamente.');
-          } else {
-            alert('Error al guardar la configuración.');
-          }
-        }) 
-      .catch(error => console.error('Error:', error)); 
+      // fetch('/guardar-configuracion', {
+      //     method: 'POST',
+      //     headers: {
+      //       'Content-Type': 'application/json'
+      //     },
+      //     body: JSON.stringify({ periodo, numListas, fechaPublicacion })
+      //   })
+      //   .then(response => response.json())
+      //   .then(data => {
+      //     if (data.success) {
+      //       alert('Configuración guardada correctamente.');
+      //     } else {
+      //       alert('Error al guardar la configuración.');
+      //     }
+      //   }) 
+      // .catch(error => console.error('Error:', error)); 
 
       let secondFormHtml = `
-        <p style="text-align: center; font-size: 12px;">En este apartado se ingresarán cada uno de los candidatos postulados, separados por dignidades para su correcta selección.</p>
-        <h4>Periodo ${periodo}</h4><form id="secondForm" action="/uploadProvisionales" method="POST" enctype="multipart/form-data">
-          <br><div style="background-color: white; width: 105%; margin-left: -20px;">
-              <div style="background-color: rgba(0, 0, 0, 0.1); width: 100%; height: 15px;"></div>
-            </div>`;
+          <p style="text-align: center; font-size: 12px;">En este apartado se ingresarán cada uno de los candidatos postulados, separados por dignidades para su correcta selección.</p>
+          <h4>Periodo ${periodo}</h4>
+          <form id="secondForm" action="/uploadProvisionales" method="POST" enctype="multipart/form-data">
+            <br><div style="background-color: white; width: 105%; margin-left: -20px;">
+                <div style="background-color: rgba(0, 0, 0, 0.1); width: 100%; height: 15px;"></div>
+              </div>`;
 
       for (let lista = 1; lista <= numListas; lista++) {
-        secondFormHtml += `<h4 style="color: var(--accent-color); padding-top: 15px;">Lista ${lista}</h4><hr>
-            <div class="form-group row my-2">
-              <label class="col-sm-4 col-form-label"> Nombre de la lista</label>
-              <div class="col-sm-8">
-                <input type="text" id="nombreLista${lista}" name="nombreLista${lista}" class="form-control" placeholder="Ingrese el nombre de la lista" required>
-              </div>
-            </div>
-            <div class="form-group row my-2">
-              <label class="col-sm-4 col-form-label"> Foto del Presidente</label>
-              <div class="col-sm-8">
-                <input type="file" id="fotoPresidenteLista${lista}periodo${periodo}" name="fotoPresidenteLista${lista}periodo${periodo}" class="form-control-file" accept="image/*" required>
-              </div>
-            </div>
-            <div class="form-group row my-2">
-              <label class="col-sm-4 col-form-label"> Foto del Vicepresidente</label>
-              <div class="col-sm-8">
-                <input type="file" id="fotoVicepresidenteLista${lista}periodo${periodo}" name="fotoVicepresidenteLista${lista}periodo${periodo}" class="form-control-file" accept="image/*" required>
-              </div>
-            </div>`;
-        
-        const dignidades = ['Presidente', 'Vicepresidente', 'Secretario', 'Tesorero', 'Sindico'];
-        dignidades.forEach(dignidad => {
           secondFormHtml += `
-            <div class="form-group row my-2">
-              <label class="col-sm-4 col-form-label">${dignidad}</label>
-              <div class="col-sm-8">
-                <select id="${dignidad.toLowerCase()}Lista${lista}" name="${dignidad.toLowerCase()}${lista}" class="form-control user-select" required>
-                  <option value="" disabled selected>Seleccione un ${dignidad.toLowerCase()}</option>
-                </select>
+              <h4 style="color: var(--accent-color); padding-top: 15px;">Lista ${lista}</h4><hr>
+              <div class="form-group row my-2">
+                <label class="col-sm-4 col-form-label">Nombre de la lista</label>
+                <div class="col-sm-8">
+                  <input type="text" id="nombreLista${lista}" name="nombreLista${lista}" class="form-control" placeholder="Ingrese el nombre de la lista" required>
+                </div>
               </div>
-            </div>`;
-        });
-
-        for (let i = 1; i <= 3; i++) {
-          secondFormHtml += `
-            <div class="form-group row my-2">
-              <label class="col-sm-4 col-form-label">Vocal Principal ${i}</label>
-              <div class="col-sm-8">
-                <select id="vocalPrincipal${i}Lista${lista}" name="vocalPrincipal${i}Lista${lista}" class="form-control user-select" required>
-                  <option value="" disabled selected>Seleccione un vocal principal</option>
-                </select>
+              <div class="form-group row my-2">
+                <label class="col-sm-4 col-form-label">Foto del Presidente</label>
+                <div class="col-sm-8">
+                  <input type="file" id="fotoPresidenteLista${lista}periodo${periodo}" name="fotoPresidenteLista${lista}periodo${periodo}" class="form-control-file" accept="image/*" required>
+                </div>
               </div>
-            </div>`;
-        }
+              <div class="form-group row my-2">
+                <label class="col-sm-4 col-form-label">Foto del Vicepresidente</label>
+                <div class="col-sm-8">
+                  <input type="file" id="fotoVicepresidenteLista${lista}periodo${periodo}" name="fotoVicepresidenteLista${lista}periodo${periodo}" class="form-control-file" accept="image/*" required>
+                </div>
+              </div>`;
+          
+          const dignidades = ['Presidente', 'Vicepresidente', 'Secretario', 'Tesorero', 'Sindico'];
+          dignidades.forEach(dignidad => {
+              secondFormHtml += `
+              <div class="form-group row my-2">
+                <label class="col-sm-4 col-form-label">${dignidad}</label>
+                <div class="col-sm-8">
+                  <select id="${dignidad.toLowerCase()}Lista${lista}" name="${dignidad.toLowerCase()}${lista}" class="form-control user-select" required>
+                    <option value="" disabled selected>Seleccione un ${dignidad.toLowerCase()}</option>
+                  </select>
+                </div>
+              </div>`;
+          });
 
-        for (let i = 1; i <= 3; i++) {
-          secondFormHtml += `
-            <div class="form-group row my-2">
-              <label class="col-sm-4 col-form-label">Vocal Suplente ${i}</label>
-              <div class="col-sm-8">
-                <select id="vocalSuplente${i}Lista${lista}" name="vocalSuplente${i}Lista${lista}" class="form-control user-select" required>
-                  <option value="" disabled selected>Seleccione un vocal suplente</option>
-                </select>
-              </div>
-            </div>`;
-        }
+          for (let i = 1; i <= 3; i++) {
+              secondFormHtml += `
+              <div class="form-group row my-2">
+                <label class="col-sm-4 col-form-label">Vocal Principal ${i}</label>
+                <div class="col-sm-8">
+                  <select id="vocalPrincipal${i}Lista${lista}" name="vocalPrincipal${i}Lista${lista}" class="form-control user-select" required>
+                    <option value="" disabled selected>Seleccione un vocal principal</option>
+                  </select>
+                </div>
+              </div>`;
+          }
 
-        secondFormHtml += `<br><div style="background-color: white; width: 105%; margin-left: -20px;">
-            <div style="background-color: rgba(0, 0, 0, 0.1); width: 100%; height: 15px;"></div>
-            </div>`;
+          for (let i = 1; i <= 3; i++) {
+              secondFormHtml += `
+              <div class="form-group row my-2">
+                <label class="col-sm-4 col-form-label">Vocal Suplente ${i}</label>
+                <div class="col-sm-8">
+                  <select id="vocalSuplente${i}Lista${lista}" name="vocalSuplente${i}Lista${lista}" class="form-control user-select" required>
+                    <option value="" disabled selected>Seleccione un vocal suplente</option>
+                  </select>
+                </div>
+              </div>`;
+          }
+
+          secondFormHtml += `<br><div style="background-color: white; width: 105%; margin-left: -20px;">
+              <div style="background-color: rgba(0, 0, 0, 0.1); width: 100%; height: 15px;"></div>
+              </div>`;
       }
 
       secondFormHtml += `<br>
-        <div class="form-group row my-2">
-          <div class="col-sm-12 text-center">
-            <button type="submit" class="read-more" id="submitButton">Enviar</button>
-            <button type="button" class="read-more" id="backButton">Regresar</button>
+          <div class="form-group row my-2">
+            <div class="col-sm-12 text-center">
+              <button type="submit" class="read-more" id="submitButton">Enviar</button>
+              <button type="button" class="read-more" id="backButton">Regresar</button>
+            </div>
           </div>
-        </div>
-      </form>`;
+        </form>`;
 
       document.getElementById('secondFormContainer').innerHTML = secondFormHtml;
 
@@ -427,6 +429,35 @@
   
       //   window.location.href = 'votacion.html';
       // });
+      // Verificar si el botón de enviar y el formulario están correctamente configurados
+      document.getElementById('secondForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const form = document.getElementById('secondForm');
+        const formData = new FormData(form);
+
+        fetch('/uploadProvisionales', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(alert(response))
+
+        .then(data => {
+            if (data.success) {
+                alert(data.message);  // Muestra el mensaje de éxito
+            } else {
+                alert('Error al guardar las imágenes xd: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert(data);
+
+            console.error('Error al guardar las imágenes:', error);
+            alert(error);
+        });
+    });
+
       document.getElementById('secondForm').addEventListener('submit', function(event) {
         event.preventDefault();
 

@@ -43,6 +43,17 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+app.post('/uploadProvisionales', upload.any(), (req, res) => {
+  console.log('Archivos recibidos:', req.files);
+
+  if (!req.files || req.files.length === 0) {
+      console.error('No se subieron archivos');
+      return res.status(400).json({ success: false, message: 'No se subieron archivos' });
+  }
+
+  // Si todo está bien, envía una respuesta de éxito
+  res.status(200).json({ success: true, message: 'Archivos subidos y guardados correctamente.' });
+});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -64,18 +75,18 @@ const transporter = nodemailer.createTransport({
 
 
 // Configuración de la base de datos
-// const dbConfig = {
-//   user: 'C##emilioadmin',
-//   password: 'xXsCzXQjS39',
-//   connectString: 'localhost/XE'
-// };
+const dbConfig = {
+  user: 'C##emilioadmin',
+  password: 'xXsCzXQjS39',
+  connectString: 'localhost/XE'
+};
 
 // Configuración de la base de datos
-const dbConfig = {
-  user: 'ADMIN', // Usuario de la base de datos
-  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
-};
+// const dbConfig = {
+//   user: 'ADMIN', // Usuario de la base de datos
+//   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
+//   connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
+// };
 
 // Función para enviar correos con un retardo de 10 segundos
 function enviarCorreoConRetardo(transporter, mailOptions, delay) {
