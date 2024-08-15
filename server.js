@@ -505,6 +505,9 @@ app.post('/guardar-votos', async (req, res) => {
     const id_lista = formData.idLista;
     const aceptaAuditoria = formData.aceptaAuditoria ? 1 : 0;
 
+    // Construir el idVoto en el formato requerido
+    const idVoto = `${id_lista}_${period}_${usuario}`;
+
     connection = await oracledb.getConnection(dbConfig);
 
     // Verificar si el votante ya existe en la tabla VOTANTES para el periodo actual
@@ -531,14 +534,15 @@ app.post('/guardar-votos', async (req, res) => {
     // Llamada a la Blockchain platform de OCI
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:SafetyCar16!').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-3-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
-      chaincode: "data_synchronization_votos",
+      chaincode: "data_synchronization_votos_v6",
       args: [
         "createVotos",
         JSON.stringify({
+          idVoto: idVoto,
           idLista: id_lista,
           periodoPostulacion: period,
           idUs: usuario,
-          fechaVotacion: new Date().toISOString().split('T')[0],
+          fechaVotacion: new Date().toISOString(),
           aceptaAuditoria: aceptaAuditoria
         })
       ],
