@@ -85,7 +85,7 @@ const transporter = nodemailer.createTransport({
 const dbConfig = {
   user: 'ADMIN', // Usuario de la base de datos
   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
+  connectString: 'votoelectronico_high' // Usar el alias del tnsnames.ora
 };
 
 // Función para enviar correos con un retardo de 10 segundos
