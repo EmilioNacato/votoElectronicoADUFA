@@ -13,7 +13,7 @@ const multer = require('multer');
 const fs = require('fs');
 const yaml = require('js-yaml');
 const nodemailer = require('nodemailer');
-const crypto = require('crypto'); 
+const crypto = require('crypto');
 const axios = require('axios');
 
 const app = express();
@@ -30,9 +30,9 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const fieldname = file.fieldname;
     const fieldMatch = fieldname.match(/(fotoPresidenteLista|fotoVicepresidenteLista)(\d+)/);
-    
+
     if (fieldMatch) {
-      const [ , type, index ] = fieldMatch;      
+      const [ , type, index ] = fieldMatch;
       const filename = `${fieldname}.png`;
       cb(null, filename);
     } else {
@@ -68,25 +68,25 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
       user: 'emilionacato75@gmail.com',
-      pass: 'hjqkxseleqyrrdaj' 
+      pass: 'hjqkxseleqyrrdaj'
   }
 });
 
 
 
 // Configuración de la base de datos
-// const dbConfig = {
-//   user: 'C##emilioadmin',
-//   password: 'xXsCzXQjS39',
-//   connectString: 'localhost/XE'
-// };
+const dbConfig = {
+  user: 'C##emilioadmin',
+  password: 'xXsCzXQjS39',
+  connectString: 'localhost/XE'
+};
 
 // Configuración de la base de datos
-const dbConfig = {
-  user: 'ADMIN', // Usuario de la base de datos
-  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
-};
+// const dbConfig = {
+//   user: 'ADMIN', // Usuario de la base de datos
+//   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
+//   connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
+// };
 
 // Función para enviar correos con un retardo de 10 segundos
 function enviarCorreoConRetardo(transporter, mailOptions, delay) {
@@ -268,7 +268,7 @@ app.post('/upload', upload.any(), (req, res) => {
 app.post('/login', async (req, res) => {
   const { username, password, periodo } = req.body;
   console.log(`Usuario: ${username}, Contraseña: ${password}, Periodo: ${periodo}`);
-  
+
   if (!username || !password) {
     res.send('<script>alert("Usuario y contraseña son requeridos"); window.location.href="/";</script>');
     return;
@@ -340,13 +340,13 @@ app.post('/guardar-candidatos', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
 
-    const insertListQuery = `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA) 
+    const insertListQuery = `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA)
                              VALUES (:id_lista, :periodo_postulacion, :estado_lista, :nombre_lista)`;
-    
-    const insertCandidatoQuery = `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND) 
+
+    const insertCandidatoQuery = `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
                                   VALUES (:id_us, :id_lista, :periodo_postulacion, :dignidad_cand, :estado_cand)`;
-    
-    const NuloQuery = `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA) 
+
+    const NuloQuery = `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA)
                        VALUES ('nulo', :periodo_postulacion, 1, 'nulo')`;
 
     const period = formData.periodo;
@@ -370,10 +370,10 @@ app.post('/guardar-candidatos', async (req, res) => {
       });
 
       const dignidades = ['presidente', 'vicepresidente', 'secretario', 'tesorero', 'sindico'];
-      
+
       for (const dignidad of dignidades) {
         const candidato = lista[dignidad];
-        
+
         if (candidato) {
           const nombreApellido = candidato.split(', ');
 
@@ -410,7 +410,7 @@ app.post('/guardar-candidatos', async (req, res) => {
       // Insertar vocales principales
       for (let i = 0; i < 3; i++) {
         const candidato = lista.vocalesPrincipales[i];
-        
+
         if (candidato) {
           const nombreApellido = candidato.split(', ');
 
@@ -447,7 +447,7 @@ app.post('/guardar-candidatos', async (req, res) => {
       // Insertar vocales suplentes
       for (let i = 0; i < 3; i++) {
         const candidato = lista.vocalesSuplentes[i];
-        
+
         if (candidato) {
           const nombreApellido = candidato.split(', ');
 
@@ -626,12 +626,12 @@ app.get('/obtener-candidatos', async (req, res) => {
     console.log('Conexión establecida con éxito.');
 
     const result = await connection.execute(
-      `SELECT 
-         c.ID_US, 
+      `SELECT
+         c.ID_US,
          u.NOMBRE_US || ' ' || u.APELLIDO_US AS NOMBRE_COMPLETO,
-         c.ID_LISTA, 
-         c.PERIODO_POSTULACION, 
-         c.DIGNIDAD_CAND, 
+         c.ID_LISTA,
+         c.PERIODO_POSTULACION,
+         c.DIGNIDAD_CAND,
          c.ESTADO_CAND,
          l.NOMBRE_LISTA
        FROM CANDIDATOS c
@@ -933,7 +933,7 @@ app.get('/api/resultados/departamento', async (req, res) => {
 
   try {
     const connection = await oracledb.getConnection(dbConfig);
-    
+
     const result = await connection.execute(
       `SELECT U.DEPARTAMENTO_US AS nombre, COUNT(V.ID_US) AS votos
        FROM VOTOS V
@@ -947,7 +947,7 @@ app.get('/api/resultados/departamento', async (req, res) => {
       nombre: row[0],
       votos: row[1]
     }));
-    
+
     res.json(data);
     await connection.close();
   } catch (err) {
@@ -969,7 +969,7 @@ app.get('/api/auditoria', async (req, res) => {
     // Consulta para obtener el total de votantes con id_rol = 2 y estado_us = 1
     const totalVotantesResult = await connection.execute(
       `SELECT COUNT(*) AS totalVotantes
-       FROM USUARIOS 
+       FROM USUARIOS
        WHERE ID_ROL = '2' AND ESTADO_US = '1'`
     );
     const totalVotantes = totalVotantesResult.rows[0][0];
@@ -979,8 +979,8 @@ app.get('/api/auditoria', async (req, res) => {
       `SELECT COUNT(DISTINCT v.ID_US) AS votantesQueHanVotado
        FROM VOTOS v
        JOIN USUARIOS u ON v.ID_US = u.ID_US
-       WHERE v.PERIODO_POSTULACION = :periodo 
-       AND u.ID_ROL = '2' 
+       WHERE v.PERIODO_POSTULACION = :periodo
+       AND u.ID_ROL = '2'
        AND u.ESTADO_US = '1'`,
       [periodo]
     );
@@ -989,14 +989,14 @@ app.get('/api/auditoria', async (req, res) => {
     // Consulta para obtener los detalles de los votantes para la auditoría
     const usuariosAuditadosResult = await connection.execute(
       `SELECT u.ID_US AS id, u.NOMBRE_US AS nombre, u.APELLIDO_US AS apellido, u.DEPARTAMENTO_US AS departamento,
-              CASE 
-                WHEN v.ID_US IS NOT NULL AND v.ACEPTA_AUDITORIA = 1 THEN 'SI' 
-                ELSE 'NO' 
+              CASE
+                WHEN v.ID_US IS NOT NULL AND v.ACEPTA_AUDITORIA = 1 THEN 'SI'
+                ELSE 'NO'
               END AS haVotado
        FROM USUARIOS u
-       LEFT JOIN VOTOS v ON u.ID_US = v.ID_US 
+       LEFT JOIN VOTOS v ON u.ID_US = v.ID_US
        AND v.PERIODO_POSTULACION = :periodo
-       WHERE u.ID_ROL = '2' 
+       WHERE u.ID_ROL = '2'
        AND u.ESTADO_US = '1'
        AND (v.ACEPTA_AUDITORIA = 1 OR v.ID_US IS NULL)`, // Solo mostrar si aceptaron la auditoría o si aún no han votado
       [periodo]
