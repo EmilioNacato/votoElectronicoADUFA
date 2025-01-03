@@ -75,18 +75,18 @@ const transporter = nodemailer.createTransport({
 
 
 // Configuración de la base de datos
-const dbConfig = {
-  user: 'C##emilioadmin',
-  password: 'xXsCzXQjS39',
-  connectString: 'localhost/XE'
-};
+// const dbConfig = {
+//   user: 'C##emilioadmin',
+//   password: 'xXsCzXQjS39',
+//   connectString: 'localhost/XE'
+// };
 
 // Configuración de la base de datos
-// const dbConfig = {
-//   user: 'ADMIN', // Usuario de la base de datos
-//   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-//   connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
-// };
+const dbConfig = {
+  user: 'ADMIN', // Usuario de la base de datos
+  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
+  connectString: 'votoelectronicobd_high' // Usar el alias del tnsnames.ora
+};
 
 // Función para enviar correos con un retardo de 10 segundos
 function enviarCorreoConRetardo(transporter, mailOptions, delay) {
