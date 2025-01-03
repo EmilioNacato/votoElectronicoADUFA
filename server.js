@@ -532,7 +532,7 @@ app.post('/guardar-votos', async (req, res) => {
                              VALUES ('nulo', :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
 
     // Llamada a la Blockchain platform de OCI
-    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:SafetyCar16!').toString('base64');
+    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v8",
       args: [
