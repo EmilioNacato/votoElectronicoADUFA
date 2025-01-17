@@ -533,18 +533,21 @@ app.post('/guardar-votos', async (req, res) => {
 
     // Llamada a la Blockchain platform de OCI
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
+    const votoData = {
+      idVoto: `${id_lista}_${period}_${usuario}`,
+      idLista: id_lista,
+      periodoPostulacion: period,
+      idUs: usuario,
+      departamentoUs: formData.departamento,
+      fechaVotacion: new Date().toISOString(),
+      aceptaAuditoria: aceptaAuditoria
+    };
+
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v8",
       args: [
         "createVotosListas",
-        JSON.stringify({
-          idVoto: idVoto,
-          idLista: id_lista,
-          periodoPostulacion: period,
-          idUs: usuario,
-          fechaVotacion: new Date().toISOString(),
-          aceptaAuditoria: aceptaAuditoria
-        })
+        JSON.stringify(votoData)
       ],
       timeout: 18000,
       sync: true
@@ -976,17 +979,19 @@ app.get('/api/auditoria', async (req, res) => {
 // Agregar nueva ruta para obtener resultados desde blockchain
 app.get('/api/resultados/blockchain', async (req, res) => {
   const periodo = req.query.periodo;
-  console.log('Periodo solicitado:', periodo); // Log del periodo solicitado
+  const filterType = req.query.filterType || 'lista';
+  console.log(`Consultando votos por ${filterType} para periodo: ${periodo}`);
 
   try {
-    // Llamada a la Blockchain platform de OCI para obtener los votos
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
-    const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
+    
+    // Obtener votos de la blockchain
+    const votosResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v8",
       args: [
         "getVotesByRange",
-        "", // inicio del rango
-        "z"  // fin del rango (usando 'z' para obtener todos los registros)
+        "",
+        "z"
       ],
       timeout: 18000,
       sync: true
@@ -997,53 +1002,58 @@ app.get('/api/resultados/blockchain', async (req, res) => {
       }
     });
 
-    // Verificar si la respuesta es exitosa
-    if (blockchainResponse.data.returnCode !== 'Success') {
-      throw new Error(blockchainResponse.data.error || 'Error al obtener datos de blockchain');
+    if (votosResponse.data.returnCode !== 'Success') {
+      throw new Error(votosResponse.data.error || 'Error al obtener datos de blockchain');
     }
 
-    // Procesar los votos de la blockchain
-    const votosBlockchain = blockchainResponse.data.result.payload;
-    console.log('Respuesta de blockchain:', votosBlockchain); 
-    
-    // Log de los periodos encontrados
-    console.log('Periodos encontrados:', votosBlockchain.map(voto => voto.periodoPostulacion));
-    
-    // Filtrar por periodo y agrupar votos por lista
-    const resultados = votosBlockchain.reduce((acc, voto) => {
-      console.log(`Comparando periodo del voto: ${voto.periodoPostulacion} con periodo solicitado: ${periodo}`);
-      if (voto.periodoPostulacion === periodo) {
+    const votosBlockchain = votosResponse.data.result.payload;
+    const votosPeriodo = votosBlockchain.filter(voto => voto.periodoPostulacion === periodo);
+
+    if (filterType === 'lista') {
+      // Agrupar votos por lista
+      const resultados = votosPeriodo.reduce((acc, voto) => {
         const idLista = voto.idLista;
-        console.log(`Voto encontrado para lista: ${idLista}`);
         acc[idLista] = (acc[idLista] || 0) + 1;
+        return acc;
+      }, {});
+
+      const resultadosFormateados = Object.entries(resultados).map(([idLista, votos]) => ({
+        nombre: idLista,
+        votos: votos
+      }));
+
+      if (resultados['NULO']) {
+        resultadosFormateados.push({
+          nombre: 'NULO',
+          votos: resultados['NULO']
+        });
       }
-      return acc;
-    }, {});
 
-    console.log('Resultados agrupados:', resultados);
+      // Identificar lista ganadora
+      if (resultadosFormateados.length > 0) {
+        const ganadora = resultadosFormateados.reduce((max, lista) => 
+          lista.votos > max.votos ? lista : max
+        );
+        console.log(`Lista ganadora: ${ganadora.nombre} con ${ganadora.votos} votos`);
+      }
 
-    // Convertir a formato esperado por el frontend
-    const resultadosFormateados = Object.entries(resultados).map(([idLista, votos]) => ({
-      nombre: idLista,
-      votos: votos
-    }));
+      res.json(resultadosFormateados);
 
-    // Agregar voto nulo si existe
-    if (resultados['NULO']) {
-      resultadosFormateados.push({
-        nombre: 'NULO',
-        votos: resultados['NULO']
-      });
+    } else if (filterType === 'departamento') {
+      // Usar el departamento almacenado en la blockchain
+      const departamentos = votosPeriodo.reduce((acc, voto) => {
+        const departamento = voto.departamentoUs;
+        acc[departamento] = (acc[departamento] || 0) + 1;
+        return acc;
+      }, {});
+
+      const resultadosFormateados = Object.entries(departamentos).map(([departamento, votos]) => ({
+        nombre: departamento,
+        votos: votos
+      }));
+
+      res.json(resultadosFormateados);
     }
-
-    console.log('Resultados formateados:', resultadosFormateados);
-    
-    // Si no hay resultados para el periodo, devolver array vacío con mensaje
-    if (resultadosFormateados.length === 0) {
-      console.log(`No se encontraron votos para el periodo: ${periodo}`);
-    }
-
-    res.json(resultadosFormateados);
 
   } catch (err) {
     console.error('Error al obtener resultados de blockchain:', err);
