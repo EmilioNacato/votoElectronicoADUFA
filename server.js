@@ -1237,12 +1237,13 @@ app.get('/verificar-horario', async (req, res) => {
     const connection = await oracledb.getConnection(dbConfig);
     
     // Obtener la fecha y hora actual del servidor Oracle junto con la configuración
+    // Ajustando la zona horaria a Ecuador (America/Guayaquil)
     const result = await connection.execute(
       `SELECT 
         TO_CHAR(FECHA_PUBLICACION, 'YYYY-MM-DD') as FECHA,
         HORA_INICIO,
         HORA_FIN,
-        TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS') as HORA_ACTUAL
+        TO_CHAR(SYS_EXTRACT_UTC(SYSTIMESTAMP) AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI:SS') as HORA_ACTUAL
        FROM CONFIGURACION_VOTACION 
        WHERE PERIODO_POSTULACION = :periodo`,
       [periodo]
@@ -1274,11 +1275,13 @@ app.get('/verificar-horario', async (req, res) => {
     const minutosFin = horaFinH * 60 + horaFinM;
     const minutosActual = horaAct * 60 + minAct;
 
-    console.log('Fecha votación (Oracle):', fechaVotacion.toISOString());
-    console.log('Fecha actual (Oracle):', fechaActual.toISOString());
-    console.log('Hora actual en minutos (Oracle):', minutosActual);
-    console.log('Hora inicio en minutos:', minutosInicio);
-    console.log('Hora fin en minutos:', minutosFin);
+    console.log('Fecha votación:', fechaVotacion.toLocaleDateString());
+    console.log('Fecha actual:', fechaActual.toLocaleDateString());
+    console.log('Hora actual:', `${horaAct}:${minAct.toString().padStart(2, '0')}`);
+    console.log('Hora inicio:', horaInicio);
+    console.log('Hora fin:', horaFin);
+    console.log('Minutos actuales:', minutosActual);
+    console.log('Rango permitido:', minutosInicio, 'a', minutosFin);
 
     // Verificar si estamos en el día correcto
     const esHoy = fechaActual.getFullYear() === fechaVotacion.getFullYear() &&
