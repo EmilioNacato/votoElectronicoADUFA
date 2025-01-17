@@ -973,6 +973,52 @@ app.get('/api/auditoria', async (req, res) => {
   }
 });
 
+// Código anterior usando base de datos (comentado para referencia futura)
+/*
+app.get('/api/resultados', async (req, res) => {
+  const periodo = req.query.periodo;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+
+    const result = await connection.execute(
+      `SELECT L.ID_LISTA AS nombre, COUNT(V.ID_VOTO) AS votos
+       FROM LISTAS L
+       LEFT JOIN VOTOS V ON L.ID_LISTA = V.ID_LISTA AND V.PERIODO_POSTULACION = :periodo
+       WHERE L.ESTADO_LISTA = 1
+       GROUP BY L.ID_LISTA
+       ORDER BY votos DESC`,
+      [periodo]
+    );
+
+    const votosNulos = await connection.execute(
+      `SELECT COUNT(*) AS votos
+       FROM VOTOS
+       WHERE ID_LISTA = 'NULO' AND PERIODO_POSTULACION = :periodo`,
+      [periodo]
+    );
+
+    const data = result.rows.map(row => ({
+      nombre: row[0],
+      votos: row[1]
+    }));
+
+    if (votosNulos.rows[0][0] > 0) {
+      data.push({
+        nombre: 'NULO',
+        votos: votosNulos.rows[0][0]
+      });
+    }
+
+    res.json(data);
+    await connection.close();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error en el servidor');
+  }
+});
+*/
+
 // Agregar nueva ruta para obtener resultados desde blockchain
 app.get('/api/resultados/blockchain', async (req, res) => {
   const periodo = req.query.periodo;
