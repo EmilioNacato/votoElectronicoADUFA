@@ -877,57 +877,6 @@ app.delete('/api/usuarios-crud/:id', async (req, res) => {
   }
 });
 
-// Conectar con Hyperledger Fabric
-async function connectToFabric() {
-  try {
-    const ccpPath = path.resolve('/home/ubuntu/fabric-network/crypto-config', 'network.yaml');
-    const ccp = yaml.load(fs.readFileSync(ccpPath, 'utf8'));
-
-    const walletPath = path.join('/home/ubuntu/votoElectronicoADUFA', 'Wallet_votoElectronicoBD');
-    const wallet = await Wallets.newFileSystemWallet(walletPath);
-
-    const gateway = new Gateway();
-    await gateway.connect(ccp, { wallet, identity: 'bmogrovejog@hotmail.com', discovery: { enabled: true, asLocalhost: false } });
-
-    const network = await gateway.getNetwork('default');
-    const contract = network.getContract('roless');
-
-    console.log('Successfully connected to the Hyperledger Fabric network');
-    return contract;
-  } catch (error) {
-    console.error(`Error connecting to Fabric: ${error}`);
-    throw new Error('Error connecting to Fabric');
-  }
-}
-
-// Endpoint para invocar chaincode
-app.get('/api/invoke', async (req, res) => {
-  try {
-    console.info('Invoking chaincode...');
-    const contract = await connectToFabric();
-    await contract.submitTransaction('initLedger');
-    console.info('Chaincode invoked successfully');
-    res.send('Chaincode invoked successfully');
-  } catch (error) {
-    console.error(`Error invoking chaincode: ${error}`);
-    res.status(500).send(`Error invoking chaincode: ${error.message}`);
-  }
-});
-
-// Endpoint para consultar chaincode
-app.get('/api/query/:roleId', async (req, res) => {
-  try {
-    console.info(`Querying chaincode for roleId: ${req.params.roleId}`);
-    const contract = await connectToFabric();
-    const result = await contract.evaluateTransaction('queryRole', req.params.roleId);
-    console.info('Query result: ', result.toString());
-    res.json(JSON.parse(result.toString()));
-  } catch (error) {
-    console.error(`Error querying chaincode: ${error}`);
-    res.status(500).send(`Error querying chaincode: ${error.message}`);
-  }
-});
-
 app.get('/api/resultados/departamento', async (req, res) => {
   const periodo = req.query.periodo;
 
