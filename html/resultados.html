@@ -171,18 +171,15 @@
           const departamentoChartContainer = document.getElementById('departamentoChartContainer');
 
           if (periodo) {
-            let apiUrl = `/api/resultados?periodo=${periodo}`;
-            
-            // Cambiar la URL de la API según el filtro seleccionado
-            if (filterType === 'departamento') {
-              apiUrl = `/api/resultados/departamento?periodo=${periodo}`;
-            }
+            let apiUrl = filterType === 'lista' 
+              ? `/api/resultados/blockchain?periodo=${periodo}`
+              : `/api/resultados/departamento?periodo=${periodo}`;
             
             fetch(apiUrl)
               .then(response => response.json())
               .then(data => {
                 // Mostrar el periodo en el encabezado
-                periodoHeader.textContent = `Resultados para el periodo ${periodo}`;
+                periodoHeader.textContent = `Resultados para el periodo ${periodo} (Datos de ${filterType === 'lista' ? 'Blockchain' : 'Base de Datos'})`;
                 
                 // Mostrar los resultados en la tabla
                 resultTable.innerHTML = generateResultsHtml(data, filterType);

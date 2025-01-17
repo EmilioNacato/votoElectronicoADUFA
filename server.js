@@ -1024,6 +1024,54 @@ app.get('/api/auditoria', async (req, res) => {
   }
 });
 
+// Agregar nueva ruta para obtener resultados desde blockchain
+app.get('/api/resultados/blockchain', async (req, res) => {
+  const periodo = req.query.periodo;
+
+  try {
+    // Llamada a la Blockchain platform de OCI para obtener los votos
+    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
+    const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
+      chaincode: "data_synchronization_votos_v8",
+      args: [
+        "queryAllVotos",
+        periodo
+      ],
+      timeout: 18000,
+      sync: true
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${credentials}`
+      }
+    });
+
+    // Procesar los votos de la blockchain
+    const votosBlockchain = JSON.parse(blockchainResponse.data.result.payload);
+    
+    // Agrupar votos por lista
+    const resultados = votosBlockchain.reduce((acc, voto) => {
+      if (voto.periodoPostulacion === periodo) {
+        const idLista = voto.idLista;
+        acc[idLista] = (acc[idLista] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    // Convertir a formato esperado por el frontend
+    const resultadosFormateados = Object.entries(resultados).map(([idLista, votos]) => ({
+      nombre: idLista,
+      votos: votos
+    }));
+
+    res.json(resultadosFormateados);
+
+  } catch (err) {
+    console.error('Error al obtener resultados de blockchain:', err);
+    res.status(500).send('Error al obtener los resultados de blockchain');
+  }
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
