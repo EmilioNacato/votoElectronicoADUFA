@@ -1034,7 +1034,7 @@ app.get('/api/resultados/blockchain', async (req, res) => {
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v8",
       args: [
-        "queryAllVotos",
+        "queryVotos",
         periodo
       ],
       timeout: 18000,
@@ -1068,7 +1068,14 @@ app.get('/api/resultados/blockchain', async (req, res) => {
 
   } catch (err) {
     console.error('Error al obtener resultados de blockchain:', err);
-    res.status(500).send('Error al obtener los resultados de blockchain');
+    // Agregar más detalles del error en la respuesta
+    if (err.response && err.response.data) {
+      console.error('Detalles del error:', err.response.data);
+    }
+    res.status(500).json({
+      message: 'Error al obtener los resultados de blockchain',
+      error: err.response?.data || err.message
+    });
   }
 });
 
