@@ -178,8 +178,8 @@
             fetch(apiUrl)
               .then(response => response.json())
               .then(data => {
-                // Mostrar el periodo en el encabezado
-                periodoHeader.textContent = `Resultados para el periodo ${periodo} (Datos de ${filterType === 'lista' ? 'Blockchain' : 'Base de Datos'})`;
+                // Mostrar solo el periodo en el encabezado sin información adicional
+                periodoHeader.textContent = `Resultados para el periodo ${periodo}`;
                 
                 // Mostrar los resultados en la tabla
                 resultTable.innerHTML = generateResultsHtml(data, filterType);
