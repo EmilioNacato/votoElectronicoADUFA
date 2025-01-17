@@ -282,6 +282,21 @@
     // Llamar a la API para verificar si el usuario ha votado
     async function verificarVoto(usuario, periodo) {
       try {
+        // Primero verificar si está dentro del horario permitido
+        const horarioResponse = await fetch(`/verificar-horario?periodo=${periodo}`);
+        const horarioData = await horarioResponse.json();
+
+        if (!horarioData.puedeVotar) {
+          document.getElementById('votacionForm').style.display = 'none';
+          document.getElementById('MensajePrevio').style.display = 'none';
+          const messageContainer = document.createElement('div');
+          messageContainer.classList.add('alert', 'alert-warning', 'mt-3');
+          messageContainer.innerHTML = `<strong>Aviso:</strong><br>${horarioData.mensaje}`;
+          document.querySelector('.form-container').appendChild(messageContainer);
+          return;
+        }
+
+        // Si está en horario, verificar si ya votó
         const response = await fetch(`/verificar-voto?usuario=${usuario}&periodo=${periodo}`);
         const data = await response.json();
 

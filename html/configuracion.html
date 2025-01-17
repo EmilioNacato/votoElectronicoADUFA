@@ -253,7 +253,15 @@
                     <div class="col-sm-8">
                       <input type="date" class="form-control" id="fechaPublicacion" name="fechaPublicacion">
                     </div>
-                  </div>                  
+                  </div>
+                  <div class="form-group">
+                    <label for="horaInicio">Hora de Inicio</label>
+                    <input type="time" id="horaInicio" class="form-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="horaFin">Hora de Fin</label>
+                    <input type="time" id="horaFin" class="form-control" required>
+                  </div>
                   <div class="form-group row my-2">
                     <div class="col-sm-12 text-center">
                       <button type="submit" class="read-more">Enviar</button>
@@ -433,85 +441,109 @@
       document.getElementById('secondForm').addEventListener('submit', function(event) {
         event.preventDefault();
 
+        // Deshabilitar el botón de envío para evitar múltiples envíos
+        const submitButton = document.getElementById('submitButton');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Enviando...';
+
         const form = document.getElementById('secondForm');
         const formData = new FormData(form);
 
+        // Primero subir las imágenes
         fetch('/uploadProvisionales', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
-        .then(alert(response))
-
         .then(data => {
             if (data.success) {
-                alert(data.message);  // Muestra el mensaje de éxito
+                // Si las imágenes se subieron correctamente, proceder con el resto de los datos
+                const listas = [];
+
+                for (let lista = 1; lista <= numListas; lista++) {
+                    const presidenteSelect = document.getElementById(`presidenteLista${lista}`);
+                    const vicepresidenteSelect = document.getElementById(`vicepresidenteLista${lista}`);
+                    const secretarioSelect = document.getElementById(`secretarioLista${lista}`);
+                    const tesoreroSelect = document.getElementById(`tesoreroLista${lista}`);
+                    const sindicoSelect = document.getElementById(`sindicoLista${lista}`);
+
+                    const formatName = (selectElement) => {
+                        const fullName = selectElement.options[selectElement.selectedIndex].text.trim();
+                        const nameParts = fullName.split(' ');
+                        const lastName = nameParts.slice(-2).join(' ');
+                        const firstName = nameParts.slice(0, -2).join(' ');
+                        return `${firstName}, ${lastName}`;
+                    };
+
+                    const listaData = {
+                        nombreLista: document.getElementById(`nombreLista${lista}`).value,
+                        presidente: formatName(presidenteSelect),
+                        vicepresidente: formatName(vicepresidenteSelect),
+                        secretario: formatName(secretarioSelect),
+                        tesorero: formatName(tesoreroSelect),
+                        sindico: formatName(sindicoSelect),
+                        vocalesPrincipales: [],
+                        vocalesSuplentes: []
+                    };
+
+                    for (let i = 1; i <= 3; i++) {
+                        const vocalPrincipalSelect = document.getElementById(`vocalPrincipal${i}Lista${lista}`);
+                        listaData.vocalesPrincipales.push(formatName(vocalPrincipalSelect));
+                    }
+
+                    for (let i = 1; i <= 3; i++) {
+                        const vocalSuplenteSelect = document.getElementById(`vocalSuplente${i}Lista${lista}`);
+                        listaData.vocalesSuplentes.push(formatName(vocalSuplenteSelect));
+                    }
+
+                    listas.push(listaData);
+                }
+
+                const formDataCompleto = {
+                    periodo: periodo,
+                    fechaPublicacion: document.getElementById('fechaPublicacion').value,
+                    horaInicio: document.getElementById('horaInicio').value,
+                    horaFin: document.getElementById('horaFin').value,
+                    listas: listas
+                };
+
+                // Guardar en localStorage
+                localStorage.setItem('formData', JSON.stringify(formDataCompleto));
+
+                // Enviar datos al servidor para guardar en la base de datos
+                fetch('/guardar-candidatos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formDataCompleto)
+                })
+                .then(response => response.text())
+                .then(() => {
+                    // Redirigir después de guardar exitosamente sin mostrar mensaje
+                    window.location.href = 'votacion.html';
+                })
+                .catch(error => {
+                    console.error('Error al guardar los datos:', error);
+                    alert('Error al guardar los datos en la base de datos');
+                    // Reactivar el botón en caso de error
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Enviar';
+                });
             } else {
-                alert('Error al guardar las imágenes xd: ' + data.message);
+                alert('Error al guardar las imágenes: ' + data.message);
+                // Reactivar el botón en caso de error
+                submitButton.disabled = false;
+                submitButton.textContent = 'Enviar';
             }
         })
         .catch(error => {
-            alert(data);
-
             console.error('Error al guardar las imágenes:', error);
-            alert(error);
+            alert('Error al subir las imágenes');
+            // Reactivar el botón en caso de error
+            submitButton.disabled = false;
+            submitButton.textContent = 'Enviar';
         });
-    });
-
-      document.getElementById('secondForm').addEventListener('submit', function(event) {
-        event.preventDefault();
-
-        const listas = [];
-
-        for (let lista = 1; lista <= numListas; lista++) {
-            const presidenteSelect = document.getElementById(`presidenteLista${lista}`);
-            const vicepresidenteSelect = document.getElementById(`vicepresidenteLista${lista}`);
-            const secretarioSelect = document.getElementById(`secretarioLista${lista}`);
-            const tesoreroSelect = document.getElementById(`tesoreroLista${lista}`);
-            const sindicoSelect = document.getElementById(`sindicoLista${lista}`);
-
-            const formatName = (selectElement) => {
-                const fullName = selectElement.options[selectElement.selectedIndex].text.trim();
-                const nameParts = fullName.split(' ');
-                const lastName = nameParts.slice(-2).join(' ');
-                const firstName = nameParts.slice(0, -2).join(' ');
-                return `${firstName}, ${lastName}`;
-            };
-
-            const listaData = {
-                nombreLista: document.getElementById(`nombreLista${lista}`).value,
-                presidente: formatName(presidenteSelect), // Guardar en formato "Nombres, Apellidos"
-                vicepresidente: formatName(vicepresidenteSelect),
-                secretario: formatName(secretarioSelect),
-                tesorero: formatName(tesoreroSelect),
-                sindico: formatName(sindicoSelect),
-                vocalesPrincipales: [],
-                vocalesSuplentes: []
-            };
-
-            for (let i = 1; i <= 3; i++) {
-                const vocalPrincipalSelect = document.getElementById(`vocalPrincipal${i}Lista${lista}`);
-                listaData.vocalesPrincipales.push(formatName(vocalPrincipalSelect));
-            }
-
-            for (let i = 1; i <= 3; i++) {
-                const vocalSuplenteSelect = document.getElementById(`vocalSuplente${i}Lista${lista}`);
-                listaData.vocalesSuplentes.push(formatName(vocalSuplenteSelect));
-            }
-
-            listas.push(listaData);
-        }
-
-        const formData = {
-            periodo: periodo,
-            listas: listas
-        };
-
-        // Guardar el formData en el localStorage
-        localStorage.setItem('formData', JSON.stringify(formData));
-
-        // Redirigir o realizar alguna acción posterior
-        window.location.href = 'votacion.html';
     });
 
       function saveImages(periodo) {

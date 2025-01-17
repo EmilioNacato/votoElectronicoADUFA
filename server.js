@@ -77,7 +77,7 @@ const transporter = nodemailer.createTransport({
 // Configuración de la base de datos
 // const dbConfig = {
 //   user: 'C##emilioadmin',
-//   password: 'xXsCzXQjS39',
+//   password: 'Emilio.*142002',
 //   connectString: 'localhost/XE'
 // };
 
@@ -175,13 +175,45 @@ app.post('/enviar-credenciales', async (req, res) => {
 });
 
 
-// // Ruta para guardar configuración
-// app.post('/guardar-configuracion', async (req, res) => {
-//   const { periodo, numListas, fechaPublicacion } = req.body;
-//   global.fechaPublicacion = fechaPublicacion;  // Asegúrate de usar el valor enviado
-//   console.log('Fecha de publicación guardada:', global.fechaPublicacion);
-//   res.json({ success: true });
-// });
+// Ruta para guardar configuración
+app.post('/guardar-configuracion', async (req, res) => {
+  const { periodo, numListas, fechaPublicacion, horaInicio, horaFin } = req.body;
+
+  console.log('Datos recibidos para configuración:', { periodo, numListas, fechaPublicacion, horaInicio, horaFin });
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    
+    // Asegúrate de que los valores no sean undefined
+    if (!fechaPublicacion || !horaInicio || !horaFin) {
+      console.error('Faltan datos en la configuración:', { fechaPublicacion, horaInicio, horaFin });
+      return res.status(400).json({ success: false, message: 'Faltan datos en la configuración.' });
+    }
+
+    // Convertir la fecha a un objeto Date
+    const fecha = new Date(fechaPublicacion);
+    const fechaOracle = fecha.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+
+    // Insertar en la tabla CONFIGURACION_VOTACION
+    await connection.execute(
+      `INSERT INTO CONFIGURACION_VOTACION (PERIODO_POSTULACION, FECHA_PUBLICACION, HORA_INICIO, HORA_FIN) 
+       VALUES (:periodo, TO_DATE(:fechaPublicacion, 'YYYY-MM-DD'), :horaInicio, :horaFin)`,
+      {
+        periodo: periodo,
+        fechaPublicacion: fechaOracle,
+        horaInicio: horaInicio,
+        horaFin: horaFin
+      }
+    );
+
+    console.log('Configuración guardada:', { periodo, fechaPublicacion, horaInicio, horaFin });
+    await connection.commit(); // Asegúrate de hacer commit después de la inserción
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error al guardar la configuración:', error);
+    res.status(500).json({ success: false, message: 'Error al guardar la configuración.' });
+  }
+});
 
 // app.get('/verificar-hora', (req, res) => {
 //   const ahora = new Date();
@@ -192,58 +224,64 @@ app.post('/enviar-credenciales', async (req, res) => {
 //   res.send('Middleware de verificación de hora funcionando.');
 // });
 
-// async function verificarFechaYHora(req, res, next) {
-//   const userId = req.body.username || req.query.username;
-//   console.log('ID del usuario:', userId);
+async function verificarFechaYHora(req, res, next) {
+  const userId = req.body.username || req.query.username;
+  console.log('ID del usuario:', userId);
 
-//   if (!userId) {
-//     return res.status(400).send('ID de usuario no proporcionado.');
-//   }
+  if (!userId) {
+    return res.status(400).send('ID de usuario no proporcionado.');
+  }
 
-//   try {
-//     const connection = await oracledb.getConnection(dbConfig);
-//     console.log('Conexión a la base de datos establecida.');
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Conexión a la base de datos establecida.');
 
-//     const result = await connection.execute(
-//       `SELECT ID_ROL FROM USUARIOS WHERE ID_US = :userId`,
-//       [userId]
-//     );
+    // Obtener la configuración de votación para el periodo actual
+    const result = await connection.execute(
+      `SELECT HORA_INICIO, HORA_FIN FROM CONFIGURACION_VOTACION WHERE PERIODO_POSTULACION = :periodo`,
+      [global.fechaPublicacion] // Suponiendo que global.fechaPublicacion contiene el periodo actual
+    );
 
-//     console.log('Resultado de la consulta:', result.rows);
+    console.log('Resultado de la consulta de configuración:', result.rows);
 
-//     if (result.rows.length > 0) {
-//       const role = result.rows[0][0];
-//       console.log('Rol del usuario:', role);
+    if (result.rows.length > 0) {
+      const horaInicio = result.rows[0][0];
+      const horaFin = result.rows[0][1];
+      console.log('Hora de inicio:', horaInicio);
+      console.log('Hora de fin:', horaFin);
 
-//       if (role !== 2) {
-//         console.log('Rol no es 2, permitiendo acceso sin verificar hora.');
-//         return next(); // Si no es rol 2, continuar sin aplicar la verificación de hora
-//       }
+      const ahora = new Date();
+      const horaActual = ahora.getHours() + ahora.getMinutes() / 60; // Convertir a horas decimales
 
-//       console.log('Verificando hora para rol 2...');
-//       const ahora = new Date();
-//       const hora = ahora.getHours();
-//       console.log('Hora actual:', hora);
+      // Convertir las horas de inicio y fin a formato decimal
+      const [horaInicioH, horaInicioM] = horaInicio.split(':').map(Number);
+      const [horaFinH, horaFinM] = horaFin.split(':').map(Number);
+      const horaInicioDecimal = horaInicioH + horaInicioM / 60;
+      const horaFinDecimal = horaFinH + horaFinM / 60;
 
-//       // Verificar que la hora esté entre 7 am y 5 pm
-//       if (hora < 13 || hora >= 17) {
-//         console.log('Hora fuera del rango permitido.');
-//         return res.status(403).send('Fuera del horario permitido para votar.');
-//       }
+      console.log('Hora actual:', horaActual);
+      console.log('Hora de inicio en formato decimal:', horaInicioDecimal);
+      console.log('Hora de fin en formato decimal:', horaFinDecimal);
 
-//       console.log('Hora dentro del rango permitido.');
-//       next(); // Permitir acceso si todo está bien
-//     } else {
-//       console.log('Usuario no encontrado.');
-//       return res.status(403).send('Usuario no encontrado.');
-//     }
+      // Verificar si la hora actual está dentro del rango permitido
+      if (horaActual < horaInicioDecimal || horaActual >= horaFinDecimal) {
+        console.log('Hora fuera del rango permitido.');
+        return res.status(403).send('Fuera del horario permitido para votar.');
+      }
 
-//     await connection.close();
-//   } catch (err) {
-//     console.error('Error al verificar el rol:', err);
-//     res.status(500).send('Error en el servidor');
-//   }
-// }
+      console.log('Hora dentro del rango permitido.');
+      next(); // Permitir acceso si todo está bien
+    } else {
+      console.log('No se encontró configuración para el periodo.');
+      return res.status(403).send('No se encontró configuración para el periodo.');
+    }
+
+    await connection.close();
+  } catch (err) {
+    console.error('Error al verificar el rol:', err);
+    res.status(500).send('Error en el servidor');
+  }
+}
 
 
 // // Aplicar el middleware a la ruta de votación
@@ -336,160 +374,199 @@ app.post('/login', async (req, res) => {
 
 app.post('/guardar-candidatos', async (req, res) => {
   const formData = req.body;
+  let connection;
 
   try {
-    const connection = await oracledb.getConnection(dbConfig);
+    connection = await oracledb.getConnection(dbConfig);
+    
+    // Guardar la configuración de la votación
+    const { periodo, fechaPublicacion, horaInicio, horaFin } = formData;
 
-    const insertListQuery = `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA)
-                             VALUES (:id_lista, :periodo_postulacion, :estado_lista, :nombre_lista)`;
+    console.log('Datos recibidos para configuración:', { periodo, fechaPublicacion, horaInicio, horaFin });
 
-    const insertCandidatoQuery = `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
-                                  VALUES (:id_us, :id_lista, :periodo_postulacion, :dignidad_cand, :estado_cand)`;
+    // Verificar si ya existe la configuración para este periodo
+    const configExiste = await connection.execute(
+      `SELECT COUNT(*) FROM CONFIGURACION_VOTACION WHERE PERIODO_POSTULACION = :periodo`,
+      [periodo]
+    );
 
-    const NuloQuery = `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA)
-                       VALUES ('nulo', :periodo_postulacion, 1, 'nulo')`;
+    if (configExiste.rows[0][0] === 0) {
+      // Formatear la fecha para Oracle (DD-MM-YYYY)
+      const fecha = new Date(fechaPublicacion);
+      const fechaFormateada = fecha.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).split('/').join('-');
 
-    const period = formData.periodo;
-    const estadoLista = 1; // Estado para listas, asumiendo que siempre es 1
-    const estadoCandidato = 1; // Estado para candidatos, asumiendo que siempre es 1
+      // Insertar en la tabla CONFIGURACION_VOTACION usando TO_DATE para convertir la fecha
+      await connection.execute(
+        `INSERT INTO CONFIGURACION_VOTACION (PERIODO_POSTULACION, FECHA_PUBLICACION, HORA_INICIO, HORA_FIN) 
+         VALUES (:periodo, TO_DATE(:fechaPublicacion, 'DD-MM-YYYY'), :horaInicio, :horaFin)`,
+        {
+          periodo: periodo,
+          fechaPublicacion: fechaFormateada,
+          horaInicio: horaInicio,
+          horaFin: horaFin
+        }
+      );
 
-    console.log("Voy a guardar Nulo");
-    await connection.execute(NuloQuery, [period]);
-    console.log("Guarde Nulo");
+      console.log('Configuración guardada:', { periodo, fechaFormateada, horaInicio, horaFin });
+    }
 
+    // Verificar si ya existe el registro nulo para este periodo
+    const checkNuloResult = await connection.execute(
+      `SELECT COUNT(*) FROM LISTAS WHERE ID_LISTA = 'nulo' AND PERIODO_POSTULACION = :periodo`,
+      [periodo]
+    );
+
+    // Solo insertar nulo si no existe
+    if (checkNuloResult.rows[0][0] === 0) {
+      await connection.execute(
+        `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA)
+         VALUES ('nulo', :periodo, 1, 'nulo')`,
+        [periodo]
+      );
+      console.log("Lista nulo guardada");
+    } else {
+      console.log("La lista nulo ya existe para este periodo");
+    }
+
+    // Procesar cada lista
     for (const [index, lista] of formData.listas.entries()) {
       const id_lista = `LISTA${index + 1}`;
-      const nombre_lista = lista.nombreLista;
+      
+      // Verificar si la lista ya existe
+      const listaExiste = await connection.execute(
+        `SELECT COUNT(*) FROM LISTAS WHERE ID_LISTA = :id_lista AND PERIODO_POSTULACION = :periodo`,
+        [id_lista, periodo]
+      );
 
-      // Insertar en la tabla LISTAS
-      await connection.execute(insertListQuery, {
-        id_lista: id_lista,
-        periodo_postulacion: period,
-        estado_lista: estadoLista,
-        nombre_lista: nombre_lista
-      });
+      if (listaExiste.rows[0][0] === 0) {
+        // Insertar la lista solo si no existe
+        await connection.execute(
+          `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA)
+           VALUES (:id_lista, :periodo, 1, :nombre_lista)`,
+          {
+            id_lista: id_lista,
+            periodo: periodo,
+            nombre_lista: lista.nombreLista
+          }
+        );
+        console.log(`Lista ${id_lista} guardada`);
 
-      const dignidades = ['presidente', 'vicepresidente', 'secretario', 'tesorero', 'sindico'];
+        // Procesar candidatos de la lista
+        const dignidades = {
+          presidente: lista.presidente,
+          vicepresidente: lista.vicepresidente,
+          secretario: lista.secretario,
+          tesorero: lista.tesorero,
+          sindico: lista.sindico
+        };
 
-      for (const dignidad of dignidades) {
-        const candidato = lista[dignidad];
-
-        if (candidato) {
-          const nombreApellido = candidato.split(', ');
-
-          if (nombreApellido.length === 2) {  // Asegurarse de que haya un nombre y un apellido
-            const cleanNombre = nombreApellido[0].trim();
-            const cleanApellido = nombreApellido[1].trim();
-
-            // Consulta para obtener el ID_US del candidato
-            const result = await connection.execute(
+        // Insertar candidatos principales
+        for (const [dignidad, candidato] of Object.entries(dignidades)) {
+          if (candidato) {
+            const [nombre, apellido] = candidato.split(', ').map(s => s.trim());
+            const userResult = await connection.execute(
               `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
-              [cleanNombre, cleanApellido]
+              [nombre, apellido]
             );
 
-            if (result.rows.length > 0) {
-              const id_us = result.rows[0][0];
-
-              // Insertar en la tabla CANDIDATOS
-              await connection.execute(insertCandidatoQuery, {
-                id_us: id_us,
-                id_lista: id_lista,
-                periodo_postulacion: period,
-                dignidad_cand: dignidad,
-                estado_cand: estadoCandidato
-              });
-            } else {
-              console.log(`No se encontró el usuario con nombre ${cleanNombre} y apellido ${cleanApellido}`);
+            if (userResult.rows.length > 0) {
+              const id_us = userResult.rows[0][0];
+              await connection.execute(
+                `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
+                 VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
+                {
+                  id_us: id_us,
+                  id_lista: id_lista,
+                  periodo: periodo,
+                  dignidad: dignidad // Usar la dignidad directamente
+                }
+              );
             }
-          } else {
-            console.log(`El formato del candidato ${candidato} es incorrecto. Debe ser 'Nombre, Apellido'.`);
           }
         }
-      }
 
-      // Insertar vocales principales
-      for (let i = 0; i < 3; i++) {
-        const candidato = lista.vocalesPrincipales[i];
-
-        if (candidato) {
-          const nombreApellido = candidato.split(', ');
-
-          if (nombreApellido.length === 2) {  // Asegurarse de que haya un nombre y un apellido
-            const cleanNombre = nombreApellido[0].trim();
-            const cleanApellido = nombreApellido[1].trim();
-
-            // Consulta para obtener el ID_US del candidato
-            const result = await connection.execute(
+        // Insertar vocales principales y suplentes
+        // Primero los vocales principales
+        for (let i = 0; i < 3; i++) {
+          const candidato = lista.vocalesPrincipales[i];
+          if (candidato) {
+            const [nombre, apellido] = candidato.split(', ').map(s => s.trim());
+            const userResult = await connection.execute(
               `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
-              [cleanNombre, cleanApellido]
+              [nombre, apellido]
             );
 
-            if (result.rows.length > 0) {
-              const id_us = result.rows[0][0];
-
-              // Insertar en la tabla CANDIDATOS
-              await connection.execute(insertCandidatoQuery, {
-                id_us: id_us,
-                id_lista: id_lista,
-                periodo_postulacion: period,
-                dignidad_cand: `vocalPrincipal${i + 1}`,
-                estado_cand: estadoCandidato
-              });
-            } else {
-              console.log(`No se encontró el usuario con nombre ${cleanNombre} y apellido ${cleanApellido}`);
+            if (userResult.rows.length > 0) {
+              const id_us = userResult.rows[0][0];
+              await connection.execute(
+                `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
+                 VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
+                {
+                  id_us: id_us,
+                  id_lista: id_lista,
+                  periodo: periodo,
+                  dignidad: `vocalPrincipal${i + 1}`
+                }
+              );
             }
-          } else {
-            console.log(`El formato del candidato ${candidato} es incorrecto. Debe ser 'Nombre, Apellido'.`);
           }
         }
-      }
 
-      // Insertar vocales suplentes
-      for (let i = 0; i < 3; i++) {
-        const candidato = lista.vocalesSuplentes[i];
-
-        if (candidato) {
-          const nombreApellido = candidato.split(', ');
-
-          if (nombreApellido.length === 2) {  // Asegurarse de que haya un nombre y un apellido
-            const cleanNombre = nombreApellido[0].trim();
-            const cleanApellido = nombreApellido[1].trim();
-
-            // Consulta para obtener el ID_US del candidato
-            const result = await connection.execute(
+        // Luego los vocales suplentes
+        for (let i = 0; i < 3; i++) {
+          const candidato = lista.vocalesSuplentes[i];
+          if (candidato) {
+            const [nombre, apellido] = candidato.split(', ').map(s => s.trim());
+            const userResult = await connection.execute(
               `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
-              [cleanNombre, cleanApellido]
+              [nombre, apellido]
             );
 
-            if (result.rows.length > 0) {
-              const id_us = result.rows[0][0];
-
-              // Insertar en la tabla CANDIDATOS
-              await connection.execute(insertCandidatoQuery, {
-                id_us: id_us,
-                id_lista: id_lista,
-                periodo_postulacion: period,
-                dignidad_cand: `vocalSuplente${i + 1}`,
-                estado_cand: estadoCandidato
-              });
-            } else {
-              console.log(`No se encontró el usuario con nombre ${cleanNombre} y apellido ${cleanApellido}`);
+            if (userResult.rows.length > 0) {
+              const id_us = userResult.rows[0][0];
+              await connection.execute(
+                `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
+                 VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
+                {
+                  id_us: id_us,
+                  id_lista: id_lista,
+                  periodo: periodo,
+                  dignidad: `vocalSuplente${i + 1}`
+                }
+              );
             }
-          } else {
-            console.log(`El formato del candidato ${candidato} es incorrecto. Debe ser 'Nombre, Apellido'.`);
           }
         }
+      } else {
+        console.log(`La lista ${id_lista} ya existe para este periodo`);
       }
     }
 
     await connection.commit();
-    await connection.close();
-
     res.status(200).send('Datos guardados correctamente');
     console.log("Candidatos guardados en la base de datos");
-  } catch (err) {
-    console.error('Error al guardar los datos en la base de datos:', err);
-    res.status(500).send('Error en el servidor');
+  } catch (error) {
+    console.error('Error al guardar los datos en la base de datos:', error);
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error('Error al hacer rollback:', rollbackError);
+      }
+    }
+    res.status(500).send('Error al guardar los datos. Es posible que algunos registros ya existan.');
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error('Error al cerrar la conexión:', closeError);
+      }
+    }
   }
 });
 
@@ -510,26 +587,52 @@ app.post('/guardar-votos', async (req, res) => {
 
     connection = await oracledb.getConnection(dbConfig);
 
+    // Verificar si el usuario existe y está activo
+    const userCheckQuery = `SELECT ID_US FROM USUARIOS WHERE ID_US = :usuario AND ESTADO_US = 1`;
+    const userResult = await connection.execute(userCheckQuery, [usuario]);
+
+    if (userResult.rows.length === 0) {
+      throw new Error('Usuario no encontrado o inactivo');
+    }
+
     // Verificar si el votante ya existe en la tabla VOTANTES para el periodo actual
-    const checkVotanteQuery = `SELECT ID_US FROM VOTANTES WHERE ID_US = :usuario AND PERIODO = :periodo`;
+    const checkVotanteQuery = `
+      SELECT ID_US 
+      FROM VOTANTES 
+      WHERE ID_US = :usuario 
+      AND PERIODO = :periodo`;
+    
     const result = await connection.execute(checkVotanteQuery, [usuario, period]);
 
     if (result.rows.length === 0) {
+      // Insertar nuevo registro en VOTANTES
       await connection.execute(
-        `INSERT INTO VOTANTES (ID_US, ESTADO_VOT, PERIODO) VALUES (:usuario, 1, :periodo)`,
+        `INSERT INTO VOTANTES (ID_US, ESTADO_VOT, PERIODO) 
+         VALUES (:usuario, 1, :periodo)`,
         [usuario, period]
       );
-      console.log('Se ha insertado el votante en la tabla VOTANTES.');
+      console.log('Votante registrado correctamente.');
     } else {
-      console.log('El votante ya existe en la tabla VOTANTES para este periodo.');
+      // Verificar si ya votó
+      const checkVotoQuery = `
+        SELECT COUNT(*) 
+        FROM VOTOS 
+        WHERE ID_US = :usuario 
+        AND PERIODO_POSTULACION = :periodo`;
+      
+      const votoResult = await connection.execute(checkVotoQuery, [usuario, period]);
+      
+      if (votoResult.rows[0][0] > 0) {
+        throw new Error('El usuario ya ha votado en este periodo');
+      }
     }
 
     // Inserción del voto en la tabla VOTOS
-    const insertQuery = `INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
-                         VALUES (:idLista, :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
+    const insertQuery = `
+      INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
+      VALUES (:idLista, :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
 
-    const insertNuloQuery = `INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
-                             VALUES ('nulo', :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
+    await connection.execute(insertQuery, [id_lista, period, usuario, aceptaAuditoria]);
 
     // Llamada a la Blockchain platform de OCI
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
@@ -551,22 +654,15 @@ app.post('/guardar-votos', async (req, res) => {
     }, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${credentials}` // Autenticación por credenciales
+        'Authorization': `Basic ${credentials}`
       }
     });
 
     console.log('Blockchain response:', blockchainResponse.data);
 
-    if (id_lista.toLowerCase() === 'nulo') {
-      console.log("Se insertará voto nulo");
-      await connection.execute(insertNuloQuery, [period, usuario, aceptaAuditoria]);
-    } else {
-      await connection.execute(insertQuery, [id_lista, period, usuario, aceptaAuditoria]);
-    }
-
     await connection.commit();
 
-    // Enviar correo de confirmación solo si el voto fue guardado correctamente
+    // Enviar correo de confirmación
     const emailQuery = `SELECT EMAIL_US FROM USUARIOS WHERE ID_US = :usuario`;
     const emailResult = await connection.execute(emailQuery, [usuario]);
     const emailUsuario = emailResult.rows[0][0];
@@ -597,10 +693,18 @@ app.post('/guardar-votos', async (req, res) => {
     res.status(200).json({ message: 'Su voto fue guardado correctamente y se ha enviado un correo de confirmación.' });
 
   } catch (err) {
-    console.error('Error al guardar los votos en la base de datos:', err);
-    if (!res.headersSent) {
-      res.status(500).send('Error en el servidor');
+    console.error('Error al guardar los votos:', err);
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error('Error al hacer rollback:', rollbackError);
+      }
     }
+    res.status(500).json({ 
+      error: true, 
+      message: err.message || 'Error al procesar el voto' 
+    });
   } finally {
     if (connection) {
       try {
@@ -1122,6 +1226,94 @@ app.get('/api/resultados/blockchain', async (req, res) => {
     res.status(500).json({
       message: 'Error al obtener los resultados de blockchain',
       error: err.response?.data || err.message
+    });
+  }
+});
+
+app.get('/verificar-horario', async (req, res) => {
+  const { periodo } = req.query;
+  
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    
+    // Obtener la fecha y hora actual del servidor Oracle junto con la configuración
+    const result = await connection.execute(
+      `SELECT 
+        TO_CHAR(FECHA_PUBLICACION, 'YYYY-MM-DD') as FECHA,
+        HORA_INICIO,
+        HORA_FIN,
+        TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS') as HORA_ACTUAL
+       FROM CONFIGURACION_VOTACION 
+       WHERE PERIODO_POSTULACION = :periodo`,
+      [periodo]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ 
+        puedeVotar: false, 
+        mensaje: 'No se encontró configuración para este periodo de votación.' 
+      });
+    }
+
+    const [fechaStr, horaInicio, horaFin, horaActualStr] = result.rows[0];
+    
+    // Convertir la fecha de votación a Date
+    const [yearVot, monthVot, dayVot] = fechaStr.split('-').map(Number);
+    const fechaVotacion = new Date(yearVot, monthVot - 1, dayVot);
+    
+    // Convertir la hora actual de Oracle a Date
+    const [fechaActualStr, horaActualStr24] = horaActualStr.split(' ');
+    const [yearAct, monthAct, dayAct] = fechaActualStr.split('-').map(Number);
+    const [horaAct, minAct, segAct] = horaActualStr24.split(':').map(Number);
+    const fechaActual = new Date(yearAct, monthAct - 1, dayAct, horaAct, minAct, segAct);
+    
+    // Convertir las horas de inicio y fin a minutos
+    const [horaInicioH, horaInicioM] = horaInicio.split(':').map(Number);
+    const [horaFinH, horaFinM] = horaFin.split(':').map(Number);
+    const minutosInicio = horaInicioH * 60 + horaInicioM;
+    const minutosFin = horaFinH * 60 + horaFinM;
+    const minutosActual = horaAct * 60 + minAct;
+
+    console.log('Fecha votación (Oracle):', fechaVotacion.toISOString());
+    console.log('Fecha actual (Oracle):', fechaActual.toISOString());
+    console.log('Hora actual en minutos (Oracle):', minutosActual);
+    console.log('Hora inicio en minutos:', minutosInicio);
+    console.log('Hora fin en minutos:', minutosFin);
+
+    // Verificar si estamos en el día correcto
+    const esHoy = fechaActual.getFullYear() === fechaVotacion.getFullYear() &&
+                 fechaActual.getMonth() === fechaVotacion.getMonth() &&
+                 fechaActual.getDate() === fechaVotacion.getDate();
+    
+    const estaEnHorario = minutosActual >= minutosInicio && minutosActual <= minutosFin;
+
+    await connection.close();
+
+    if (!esHoy) {
+      return res.json({ 
+        puedeVotar: false, 
+        mensaje: `La votación está programada para el ${fechaVotacion.toLocaleDateString()}.\nHorario de votación: ${horaInicio} a ${horaFin}.\n\nPor favor, ingrese nuevamente en la fecha y hora indicadas.` 
+      });
+    }
+
+    if (!estaEnHorario) {
+      return res.json({ 
+        puedeVotar: false, 
+        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
+      });
+    }
+
+    // Si llegamos aquí, significa que estamos en el día correcto y dentro del horario
+    res.json({ 
+      puedeVotar: true, 
+      mensaje: 'Puede proceder con la votación.' 
+    });
+
+  } catch (error) {
+    console.error('Error al verificar horario:', error);
+    res.status(500).json({ 
+      puedeVotar: false, 
+      mensaje: 'Error al verificar el horario de votación.' 
     });
   }
 });
