@@ -976,6 +976,7 @@ app.get('/api/auditoria', async (req, res) => {
 // Agregar nueva ruta para obtener resultados desde blockchain
 app.get('/api/resultados/blockchain', async (req, res) => {
   const periodo = req.query.periodo;
+  console.log('Periodo solicitado:', periodo); // Log del periodo solicitado
 
   try {
     // Llamada a la Blockchain platform de OCI para obtener los votos
@@ -1003,17 +1004,23 @@ app.get('/api/resultados/blockchain', async (req, res) => {
 
     // Procesar los votos de la blockchain
     const votosBlockchain = blockchainResponse.data.result.payload;
-    console.log('Respuesta de blockchain:', votosBlockchain); // Para debug
+    console.log('Respuesta de blockchain:', votosBlockchain); 
+    
+    // Log de los periodos encontrados
+    console.log('Periodos encontrados:', votosBlockchain.map(voto => voto.periodoPostulacion));
     
     // Filtrar por periodo y agrupar votos por lista
     const resultados = votosBlockchain.reduce((acc, voto) => {
-      // Asegurarse de que el voto tenga la estructura esperada
-      if (voto.Record && voto.Record.periodoPostulacion === periodo) {
-        const idLista = voto.Record.idLista;
+      console.log(`Comparando periodo del voto: ${voto.periodoPostulacion} con periodo solicitado: ${periodo}`);
+      if (voto.periodoPostulacion === periodo) {
+        const idLista = voto.idLista;
+        console.log(`Voto encontrado para lista: ${idLista}`);
         acc[idLista] = (acc[idLista] || 0) + 1;
       }
       return acc;
     }, {});
+
+    console.log('Resultados agrupados:', resultados);
 
     // Convertir a formato esperado por el frontend
     const resultadosFormateados = Object.entries(resultados).map(([idLista, votos]) => ({
@@ -1029,7 +1036,13 @@ app.get('/api/resultados/blockchain', async (req, res) => {
       });
     }
 
-    console.log('Resultados formateados:', resultadosFormateados); // Para debug
+    console.log('Resultados formateados:', resultadosFormateados);
+    
+    // Si no hay resultados para el periodo, devolver array vacío con mensaje
+    if (resultadosFormateados.length === 0) {
+      console.log(`No se encontraron votos para el periodo: ${periodo}`);
+    }
+
     res.json(resultadosFormateados);
 
   } catch (err) {
