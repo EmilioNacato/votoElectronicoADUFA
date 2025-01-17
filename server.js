@@ -533,21 +533,18 @@ app.post('/guardar-votos', async (req, res) => {
 
     // Llamada a la Blockchain platform de OCI
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
-    const votoData = {
-      idVoto: `${id_lista}_${period}_${usuario}`,
-      idLista: id_lista,
-      periodoPostulacion: period,
-      idUs: usuario,
-      departamentoUs: formData.departamento,
-      fechaVotacion: new Date().toISOString(),
-      aceptaAuditoria: aceptaAuditoria
-    };
-
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v8",
       args: [
         "createVotosListas",
-        JSON.stringify(votoData)
+        JSON.stringify({
+          idVoto: idVoto,
+          idLista: id_lista,
+          periodoPostulacion: period,
+          idUs: usuario,
+          fechaVotacion: new Date().toISOString(),
+          aceptaAuditoria: aceptaAuditoria
+        })
       ],
       timeout: 18000,
       sync: true
@@ -984,9 +981,7 @@ app.get('/api/resultados/blockchain', async (req, res) => {
 
   try {
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
-    
-    // Obtener votos de la blockchain
-    const votosResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
+    const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v8",
       args: [
         "getVotesByRange",
@@ -1002,26 +997,30 @@ app.get('/api/resultados/blockchain', async (req, res) => {
       }
     });
 
-    if (votosResponse.data.returnCode !== 'Success') {
-      throw new Error(votosResponse.data.error || 'Error al obtener datos de blockchain');
+    if (blockchainResponse.data.returnCode !== 'Success') {
+      throw new Error(blockchainResponse.data.error || 'Error al obtener datos de blockchain');
     }
 
-    const votosBlockchain = votosResponse.data.result.payload;
+    const votosBlockchain = blockchainResponse.data.result.payload;
     const votosPeriodo = votosBlockchain.filter(voto => voto.periodoPostulacion === periodo);
-
+    
+    let resultados;
+    
     if (filterType === 'lista') {
       // Agrupar votos por lista
-      const resultados = votosPeriodo.reduce((acc, voto) => {
+      resultados = votosPeriodo.reduce((acc, voto) => {
         const idLista = voto.idLista;
         acc[idLista] = (acc[idLista] || 0) + 1;
         return acc;
       }, {});
 
+      // Convertir a formato esperado por el frontend
       const resultadosFormateados = Object.entries(resultados).map(([idLista, votos]) => ({
         nombre: idLista,
         votos: votos
       }));
 
+      // Agregar voto nulo si existe
       if (resultados['NULO']) {
         resultadosFormateados.push({
           nombre: 'NULO',
@@ -1040,19 +1039,33 @@ app.get('/api/resultados/blockchain', async (req, res) => {
       res.json(resultadosFormateados);
 
     } else if (filterType === 'departamento') {
-      // Usar el departamento almacenado en la blockchain
-      const departamentos = votosPeriodo.reduce((acc, voto) => {
-        const departamento = voto.departamentoUs;
-        acc[departamento] = (acc[departamento] || 0) + 1;
-        return acc;
-      }, {});
+      // Necesitamos obtener el departamento de cada usuario que votó
+      const connection = await oracledb.getConnection(dbConfig);
+      
+      try {
+        const departamentos = {};
+        
+        for (const voto of votosPeriodo) {
+          const userResult = await connection.execute(
+            `SELECT DEPARTAMENTO_US FROM USUARIOS WHERE ID_US = :idUs AND ESTADO_US = '1'`,
+            [voto.idUs]
+          );
+          
+          if (userResult.rows.length > 0) {
+            const departamento = userResult.rows[0][0];
+            departamentos[departamento] = (departamentos[departamento] || 0) + 1;
+          }
+        }
 
-      const resultadosFormateados = Object.entries(departamentos).map(([departamento, votos]) => ({
-        nombre: departamento,
-        votos: votos
-      }));
+        const resultadosFormateados = Object.entries(departamentos).map(([departamento, votos]) => ({
+          nombre: departamento,
+          votos: votos
+        }));
 
-      res.json(resultadosFormateados);
+        res.json(resultadosFormateados);
+      } finally {
+        await connection.close();
+      }
     }
 
   } catch (err) {
