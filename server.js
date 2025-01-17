@@ -983,8 +983,9 @@ app.get('/api/resultados/blockchain', async (req, res) => {
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v8",
       args: [
-        "queryVotos",
-        periodo
+        "getVotesByRange",
+        "", // inicio del rango
+        "z"  // fin del rango (usando 'z' para obtener todos los registros)
       ],
       timeout: 18000,
       sync: true
@@ -995,13 +996,20 @@ app.get('/api/resultados/blockchain', async (req, res) => {
       }
     });
 
+    // Verificar si la respuesta es exitosa
+    if (blockchainResponse.data.returnCode !== 'Success') {
+      throw new Error(blockchainResponse.data.error || 'Error al obtener datos de blockchain');
+    }
+
     // Procesar los votos de la blockchain
-    const votosBlockchain = JSON.parse(blockchainResponse.data.result.payload);
+    const votosBlockchain = blockchainResponse.data.result.payload;
+    console.log('Respuesta de blockchain:', votosBlockchain); // Para debug
     
-    // Agrupar votos por lista
+    // Filtrar por periodo y agrupar votos por lista
     const resultados = votosBlockchain.reduce((acc, voto) => {
-      if (voto.periodoPostulacion === periodo) {
-        const idLista = voto.idLista;
+      // Asegurarse de que el voto tenga la estructura esperada
+      if (voto.Record && voto.Record.periodoPostulacion === periodo) {
+        const idLista = voto.Record.idLista;
         acc[idLista] = (acc[idLista] || 0) + 1;
       }
       return acc;
@@ -1013,11 +1021,19 @@ app.get('/api/resultados/blockchain', async (req, res) => {
       votos: votos
     }));
 
+    // Agregar voto nulo si existe
+    if (resultados['NULO']) {
+      resultadosFormateados.push({
+        nombre: 'NULO',
+        votos: resultados['NULO']
+      });
+    }
+
+    console.log('Resultados formateados:', resultadosFormateados); // Para debug
     res.json(resultadosFormateados);
 
   } catch (err) {
     console.error('Error al obtener resultados de blockchain:', err);
-    // Agregar más detalles del error en la respuesta
     if (err.response && err.response.data) {
       console.error('Detalles del error:', err.response.data);
     }
