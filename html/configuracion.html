@@ -195,17 +195,17 @@
         </a>
         <nav id="navmenu" class="navmenu">
           <ul>
-            <li><a href="#about">Configuración</a></li>
-            <li><a href="resultados.html">Resultados</a></li>
-            <li><a href="usuarios.html">Usuarios ADUFA</a></li>
-            <li><a href="auditoria.html">Auditoría de Usuarios</a></li>
-            <li class="dropdown"><a href="#" id="username-display"> NOMBRE USUARIO <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+            <li><a href="#about" class="nav-link active">Configuración</a></li>
+            <li><a href="resultados.html" class="nav-link">Resultados</a></li>
+            <li><a href="usuarios.html" class="nav-link">Usuarios ADUFA</a></li>
+            <li><a href="auditoria.html" class="nav-link">Auditoría de Usuarios</a></li>
+            <li class="dropdown"><a href="#" id="username-display" class="nav-link"> NOMBRE USUARIO <i class="bi bi-chevron-down toggle-dropdown"></i></a>
               <ul>
-                <li><a href="#" id="logout-button">Cerrar Sesión</a></li>
+                <li><a href="#" id="logout-button" class="nav-link">Cerrar Sesión</a></li>
               </ul>
             </li>
           </ul>
-          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+          <i class="mobile-nav-toggle d-lg-none bi bi-list"></i>
         </nav>
       </div>
     </div>
@@ -307,6 +307,46 @@
   <script src="../assets/js/main.js"></script>
 
   <script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+      const usuario = localStorage.getItem('usuario');
+      const rol = localStorage.getItem('rol');
+
+      // Verificar si el usuario tiene permiso (rol 1)
+      if (!rol || rol !== '1') {
+        window.location.href = '/';
+        return;
+      }
+
+      // Actualizar el nombre de usuario en el display
+      if (usuario) {
+        document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+      }
+
+      // Manejar el cierre de sesión
+      document.getElementById('logout-button').addEventListener('click', function() {
+        localStorage.removeItem('rol');
+        localStorage.removeItem('usuario');
+        window.location.href = '/';
+      });
+
+      // Obtener usuarios y llenar los campos de selección
+      fetch('/api/usuarios')
+        .then(response => response.json())
+        .then(data => {
+          console.log(data); // Depuración: muestra los datos en consola
+          const userSelects = document.querySelectorAll('.user-select');
+          userSelects.forEach(select => {
+            data.forEach(user => {
+              const option = document.createElement('option');
+              option.value = `${user.nombres} ${user.apellidos}`;
+              option.text = `${user.nombres} ${user.apellidos}`;
+              select.appendChild(option);
+            });
+          });
+        })
+        .catch(err => console.error('Error al obtener los usuarios:', err));
+    });
+
     document.getElementById('initialForm').addEventListener('submit', function(event) {
       event.preventDefault();
 
@@ -451,98 +491,77 @@
 
         // Primero subir las imágenes
         fetch('/uploadProvisionales', {
-            method: 'POST',
-            body: formData
+          method: 'POST',
+          body: formData
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                // Si las imágenes se subieron correctamente, proceder con el resto de los datos
-                const listas = [];
+          if (data.success) {
+            // Si las imágenes se subieron correctamente, guardar el resto de los datos en localStorage
+            const listas = [];
 
-                for (let lista = 1; lista <= numListas; lista++) {
-                    const presidenteSelect = document.getElementById(`presidenteLista${lista}`);
-                    const vicepresidenteSelect = document.getElementById(`vicepresidenteLista${lista}`);
-                    const secretarioSelect = document.getElementById(`secretarioLista${lista}`);
-                    const tesoreroSelect = document.getElementById(`tesoreroLista${lista}`);
-                    const sindicoSelect = document.getElementById(`sindicoLista${lista}`);
+            for (let lista = 1; lista <= numListas; lista++) {
+              const presidenteSelect = document.getElementById(`presidenteLista${lista}`);
+              const vicepresidenteSelect = document.getElementById(`vicepresidenteLista${lista}`);
+              const secretarioSelect = document.getElementById(`secretarioLista${lista}`);
+              const tesoreroSelect = document.getElementById(`tesoreroLista${lista}`);
+              const sindicoSelect = document.getElementById(`sindicoLista${lista}`);
 
-                    const formatName = (selectElement) => {
-                        const fullName = selectElement.options[selectElement.selectedIndex].text.trim();
-                        const nameParts = fullName.split(' ');
-                        const lastName = nameParts.slice(-2).join(' ');
-                        const firstName = nameParts.slice(0, -2).join(' ');
-                        return `${firstName}, ${lastName}`;
-                    };
+              const vocalesPrincipales = [];
+              const vocalesSuplentes = [];
 
-                    const listaData = {
-                        nombreLista: document.getElementById(`nombreLista${lista}`).value,
-                        presidente: formatName(presidenteSelect),
-                        vicepresidente: formatName(vicepresidenteSelect),
-                        secretario: formatName(secretarioSelect),
-                        tesorero: formatName(tesoreroSelect),
-                        sindico: formatName(sindicoSelect),
-                        vocalesPrincipales: [],
-                        vocalesSuplentes: []
-                    };
+              for (let i = 1; i <= 3; i++) {
+                const vocalPrincipalSelect = document.getElementById(`vocalPrincipal${i}Lista${lista}`);
+                const vocalSuplenteSelect = document.getElementById(`vocalSuplente${i}Lista${lista}`);
 
-                    for (let i = 1; i <= 3; i++) {
-                        const vocalPrincipalSelect = document.getElementById(`vocalPrincipal${i}Lista${lista}`);
-                        listaData.vocalesPrincipales.push(formatName(vocalPrincipalSelect));
-                    }
-
-                    for (let i = 1; i <= 3; i++) {
-                        const vocalSuplenteSelect = document.getElementById(`vocalSuplente${i}Lista${lista}`);
-                        listaData.vocalesSuplentes.push(formatName(vocalSuplenteSelect));
-                    }
-
-                    listas.push(listaData);
+                if (vocalPrincipalSelect && vocalPrincipalSelect.value) {
+                  vocalesPrincipales.push(vocalPrincipalSelect.value);
                 }
+                if (vocalSuplenteSelect && vocalSuplenteSelect.value) {
+                  vocalesSuplentes.push(vocalSuplenteSelect.value);
+                }
+              }
 
-                const formDataCompleto = {
-                    periodo: periodo,
-                    fechaPublicacion: document.getElementById('fechaPublicacion').value,
-                    horaInicio: document.getElementById('horaInicio').value,
-                    horaFin: document.getElementById('horaFin').value,
-                    listas: listas
-                };
+              const listaData = {
+                nombreLista: document.getElementById(`nombreLista${lista}`).value,
+                presidente: presidenteSelect ? presidenteSelect.value : null,
+                vicepresidente: vicepresidenteSelect ? vicepresidenteSelect.value : null,
+                secretario: secretarioSelect ? secretarioSelect.value : null,
+                tesorero: tesoreroSelect ? tesoreroSelect.value : null,
+                sindico: sindicoSelect ? sindicoSelect.value : null,
+                vocalesPrincipales,
+                vocalesSuplentes
+              };
 
-                // Guardar en localStorage
-                localStorage.setItem('formData', JSON.stringify(formDataCompleto));
-
-                // Enviar datos al servidor para guardar en la base de datos
-                fetch('/guardar-candidatos', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formDataCompleto)
-                })
-                .then(response => response.text())
-                .then(() => {
-                    // Redirigir después de guardar exitosamente sin mostrar mensaje
-                    window.location.href = 'votacion.html';
-                })
-                .catch(error => {
-                    console.error('Error al guardar los datos:', error);
-                    alert('Error al guardar los datos en la base de datos');
-                    // Reactivar el botón en caso de error
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Enviar';
-                });
-            } else {
-                alert('Error al guardar las imágenes: ' + data.message);
-                // Reactivar el botón en caso de error
-                submitButton.disabled = false;
-                submitButton.textContent = 'Enviar';
+              listas.push(listaData);
             }
-        })
-        .catch(error => {
-            console.error('Error al guardar las imágenes:', error);
-            alert('Error al subir las imágenes');
+
+            const formDataCompleto = {
+              periodo: periodo,
+              fechaPublicacion: document.getElementById('fechaPublicacion').value,
+              horaInicio: document.getElementById('horaInicio').value,
+              horaFin: document.getElementById('horaFin').value,
+              listas: listas
+            };
+
+            // Guardar en localStorage
+            localStorage.setItem('formDataCompleto', JSON.stringify(formDataCompleto));
+
+            // Redirigir a la página de previsualización
+            window.location.href = 'votacion.html';
+          } else {
+            alert('Error al guardar las imágenes: ' + data.message);
             // Reactivar el botón en caso de error
             submitButton.disabled = false;
             submitButton.textContent = 'Enviar';
+          }
+        })
+        .catch(error => {
+          console.error('Error al guardar las imágenes:', error);
+          alert('Error al subir las imágenes');
+          // Reactivar el botón en caso de error
+          submitButton.disabled = false;
+          submitButton.textContent = 'Enviar';
         });
     });
 
@@ -598,36 +617,6 @@
           });
         })
         .catch(err => console.error('Error al obtener los usuarios:', err));
-    });
-
-    document.addEventListener('DOMContentLoaded', (event) => {
-      // Obtener el nombre del usuario desde el LocalStorage
-      const usuario = localStorage.getItem('usuario');
-
-      // Verificar si el nombre del usuario existe en el LocalStorage
-      if (usuario) {
-        // Actualizar el contenido del elemento con el ID 'username-display'
-        document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
-      }
-
-      // Manejar el clic en el botón de "Cerrar Sesión"
-      document.getElementById('logout-button').addEventListener('click', function() {
-        // Obtener el periodo de la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const periodo = urlParams.get('periodo');
-
-        // Guardar el periodo en el LocalStorage solo si es válido
-        if (periodo && periodo.trim() !== '') {
-          localStorage.setItem('periodo', periodo);
-        }
-
-        // Borrar las variables 'rol' y 'usuario' del LocalStorage
-        localStorage.removeItem('rol');
-        localStorage.removeItem('usuario');
-        
-        // Redireccionar al index
-        window.location.href = '/';
-      });
     });
   </script>
 </body>

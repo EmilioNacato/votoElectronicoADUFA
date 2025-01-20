@@ -15,6 +15,7 @@ const yaml = require('js-yaml');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const axios = require('axios');
+const sharp = require('sharp');
 
 const app = express();
 const PORT = 40000;
@@ -41,18 +42,92 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
-
-app.post('/uploadProvisionales', upload.any(), (req, res) => {
-  console.log('Archivos recibidos:', req.files);
-
-  if (!req.files || req.files.length === 0) {
-      console.error('No se subieron archivos');
-      return res.status(400).json({ success: false, message: 'No se subieron archivos' });
+// Validación de archivos
+const fileFilter = (req, file, cb) => {
+  // Verificar el tipo de archivo
+  if (!file.mimetype.startsWith('image/')) {
+    return cb(new Error('Solo se permiten archivos de imagen'), false);
   }
 
-  // Si todo está bien, envía una respuesta de éxito
-  res.status(200).json({ success: true, message: 'Archivos subidos y guardados correctamente.' });
+  // Verificar la extensión
+  const validExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!validExtensions.includes(ext)) {
+    return cb(new Error('Formato de imagen no válido. Use: JPG, JPEG, PNG o GIF'), false);
+  }
+
+  cb(null, true);
+};
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB máximo
+    files: 20 // máximo 20 archivos
+  },
+  fileFilter: fileFilter
+});
+
+app.post('/uploadProvisionales', upload.any(), async (req, res) => {
+  try {
+    console.log('Archivos recibidos:', req.files);
+
+    if (!req.files || req.files.length === 0) {
+      console.error('No se subieron archivos');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No se subieron archivos' 
+      });
+    }
+
+    // Verificar tamaño de cada archivo
+    const filesWithErrors = req.files.filter(file => file.size > 5 * 1024 * 1024);
+    if (filesWithErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Algunos archivos exceden el tamaño máximo permitido (5MB)',
+        files: filesWithErrors.map(f => f.originalname)
+      });
+    }
+
+    // Procesar y redimensionar cada imagen
+    for (const file of req.files) {
+      try {
+        const tempPath = file.path + '.tmp';
+        await sharp(file.path)
+          .resize(120, 144, {
+            fit: 'cover',
+            position: 'center'
+          })
+          .toFormat('png')
+          .toFile(tempPath);
+
+        // En Windows, primero intentamos renombrar el archivo temporal
+        try {
+          fs.renameSync(tempPath, file.path);
+        } catch (renameErr) {
+          // Si falla el renombre, copiamos el contenido y luego eliminamos
+          fs.copyFileSync(tempPath, file.path);
+          fs.unlinkSync(tempPath);
+        }
+      } catch (err) {
+        console.error(`Error al procesar la imagen ${file.originalname}:`, err);
+      }
+    }
+
+    // Si todo está bien, envía una respuesta de éxito
+    res.status(200).json({ 
+      success: true, 
+      message: 'Imágenes procesadas y guardadas correctamente.' 
+    });
+  } catch (error) {
+    console.error('Error al procesar archivos:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al procesar los archivos',
+      error: error.message 
+    });
+  }
 });
 
 app.use(bodyParser.json());
@@ -75,18 +150,18 @@ const transporter = nodemailer.createTransport({
 
 
 // Configuración de la base de datos
-// const dbConfig = {
-//   user: 'C##emilioadmin',
-//   password: 'Emilio.*142002',
-//   connectString: 'localhost/XE'
-// };
+const dbConfig = {
+  user: 'C##emilioadmin',
+  password: 'Emilio.*142002',
+  connectString: 'localhost/XE'
+};
 
 // Configuración de la base de datos
-const dbConfig = {
-  user: 'ADMIN', // Usuario de la base de datos
-  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: 'votoelectronico_high' // Usar el alias del tnsnames.ora
-};
+// const dbConfig = {
+//   user: 'ADMIN', // Usuario de la base de datos
+//   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
+//   connectString: 'votoelectronico_high' // Usar el alias del tnsnames.ora
+// };
 
 // Función para enviar correos con un retardo de 10 segundos
 function enviarCorreoConRetardo(transporter, mailOptions, delay) {
@@ -377,12 +452,15 @@ app.post('/guardar-candidatos', async (req, res) => {
   let connection;
 
   try {
+    console.log('Iniciando guardado de candidatos...');
+    console.log('Datos recibidos:', JSON.stringify(formData, null, 2));
+
     connection = await oracledb.getConnection(dbConfig);
     
     // Guardar la configuración de la votación
     const { periodo, fechaPublicacion, horaInicio, horaFin } = formData;
 
-    console.log('Datos recibidos para configuración:', { periodo, fechaPublicacion, horaInicio, horaFin });
+    console.log('Datos de configuración:', { periodo, fechaPublicacion, horaInicio, horaFin });
 
     // Verificar si ya existe la configuración para este periodo
     const configExiste = await connection.execute(
@@ -399,6 +477,8 @@ app.post('/guardar-candidatos', async (req, res) => {
         year: 'numeric'
       }).split('/').join('-');
 
+      console.log('Insertando configuración:', { periodo, fechaFormateada, horaInicio, horaFin });
+
       // Insertar en la tabla CONFIGURACION_VOTACION usando TO_DATE para convertir la fecha
       await connection.execute(
         `INSERT INTO CONFIGURACION_VOTACION (PERIODO_POSTULACION, FECHA_PUBLICACION, HORA_INICIO, HORA_FIN) 
@@ -411,7 +491,9 @@ app.post('/guardar-candidatos', async (req, res) => {
         }
       );
 
-      console.log('Configuración guardada:', { periodo, fechaFormateada, horaInicio, horaFin });
+      console.log('Configuración guardada exitosamente');
+    } else {
+      console.log('La configuración ya existe para este periodo');
     }
 
     // Verificar si ya existe el registro nulo para este periodo
@@ -428,13 +510,12 @@ app.post('/guardar-candidatos', async (req, res) => {
         [periodo]
       );
       console.log("Lista nulo guardada");
-    } else {
-      console.log("La lista nulo ya existe para este periodo");
     }
 
     // Procesar cada lista
     for (const [index, lista] of formData.listas.entries()) {
       const id_lista = `LISTA${index + 1}`;
+      console.log(`Procesando ${id_lista}:`, lista);
       
       // Verificar si la lista ya existe
       const listaExiste = await connection.execute(
@@ -443,7 +524,7 @@ app.post('/guardar-candidatos', async (req, res) => {
       );
 
       if (listaExiste.rows[0][0] === 0) {
-        // Insertar la lista solo si no existe
+        // Insertar la lista
         await connection.execute(
           `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA)
            VALUES (:id_lista, :periodo, 1, :nombre_lista)`,
@@ -465,80 +546,55 @@ app.post('/guardar-candidatos', async (req, res) => {
         };
 
         // Insertar candidatos principales
-        for (const [dignidad, candidato] of Object.entries(dignidades)) {
-          if (candidato) {
-            const [nombre, apellido] = candidato.split(', ').map(s => s.trim());
-            const userResult = await connection.execute(
-              `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
-              [nombre, apellido]
+        for (const [dignidad, id_us] of Object.entries(dignidades)) {
+          if (id_us) {
+            console.log(`Insertando candidato para ${dignidad}:`, id_us);
+            await connection.execute(
+              `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
+               VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
+              {
+                id_us: id_us,
+                id_lista: id_lista,
+                periodo: periodo,
+                dignidad: dignidad
+              }
             );
-
-            if (userResult.rows.length > 0) {
-              const id_us = userResult.rows[0][0];
-              await connection.execute(
-                `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
-                 VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
-                {
-                  id_us: id_us,
-                  id_lista: id_lista,
-                  periodo: periodo,
-                  dignidad: dignidad // Usar la dignidad directamente
-                }
-              );
-            }
           }
         }
 
-        // Insertar vocales principales y suplentes
-        // Primero los vocales principales
-        for (let i = 0; i < 3; i++) {
-          const candidato = lista.vocalesPrincipales[i];
-          if (candidato) {
-            const [nombre, apellido] = candidato.split(', ').map(s => s.trim());
-            const userResult = await connection.execute(
-              `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
-              [nombre, apellido]
+        // Insertar vocales principales
+        for (let i = 0; i < lista.vocalesPrincipales.length; i++) {
+          const id_us = lista.vocalesPrincipales[i];
+          if (id_us) {
+            console.log(`Insertando vocal principal ${i + 1}:`, id_us);
+            await connection.execute(
+              `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
+               VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
+              {
+                id_us: id_us,
+                id_lista: id_lista,
+                periodo: periodo,
+                dignidad: `vocalPrincipal${i + 1}`
+              }
             );
-
-            if (userResult.rows.length > 0) {
-              const id_us = userResult.rows[0][0];
-              await connection.execute(
-                `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
-                 VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
-                {
-                  id_us: id_us,
-                  id_lista: id_lista,
-                  periodo: periodo,
-                  dignidad: `vocalPrincipal${i + 1}`
-                }
-              );
-            }
           }
         }
 
-        // Luego los vocales suplentes
-        for (let i = 0; i < 3; i++) {
-          const candidato = lista.vocalesSuplentes[i];
-          if (candidato) {
-            const [nombre, apellido] = candidato.split(', ').map(s => s.trim());
-            const userResult = await connection.execute(
-              `SELECT ID_US FROM USUARIOS WHERE NOMBRE_US = :nombre AND APELLIDO_US = :apellido`,
-              [nombre, apellido]
+        // Insertar vocales suplentes
+        for (let i = 0; i < lista.vocalesSuplentes.length; i++) {
+          const id_us = lista.vocalesSuplentes[i];
+          if (id_us) {
+            console.log(`Insertando vocal suplente ${i + 1}:`, id_us);
+            await connection.execute(
+              `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
+               VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
+              {
+                id_us: id_us,
+                id_lista: id_lista,
+                periodo: periodo,
+                dignidad: `vocalSuplente${i + 1}`
+              }
             );
-
-            if (userResult.rows.length > 0) {
-              const id_us = userResult.rows[0][0];
-              await connection.execute(
-                `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
-                 VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
-                {
-                  id_us: id_us,
-                  id_lista: id_lista,
-                  periodo: periodo,
-                  dignidad: `vocalSuplente${i + 1}`
-                }
-              );
-            }
           }
         }
       } else {
@@ -547,10 +603,10 @@ app.post('/guardar-candidatos', async (req, res) => {
     }
 
     await connection.commit();
+    console.log("Todos los datos guardados correctamente");
     res.status(200).send('Datos guardados correctamente');
-    console.log("Candidatos guardados en la base de datos");
   } catch (error) {
-    console.error('Error al guardar los datos en la base de datos:', error);
+    console.error('Error al guardar los datos:', error);
     if (connection) {
       try {
         await connection.rollback();
@@ -558,7 +614,7 @@ app.post('/guardar-candidatos', async (req, res) => {
         console.error('Error al hacer rollback:', rollbackError);
       }
     }
-    res.status(500).send('Error al guardar los datos. Es posible que algunos registros ya existan.');
+    res.status(500).send('Error al guardar los datos: ' + error.message);
   } finally {
     if (connection) {
       try {
@@ -720,53 +776,46 @@ app.post('/guardar-votos', async (req, res) => {
 
 // Ruta para obtener candidatos por período
 app.get('/obtener-candidatos', async (req, res) => {
-  const periodo = req.query.periodo;
-  //console.log(`Solicitud para obtener candidatos del período: ${periodo}`);
+  const { periodo } = req.query;
+  let connection;
 
   try {
-    // Establecer conexión a la base de datos
-    //console.log('Estableciendo conexión a Oracle...');
-    const connection = await oracledb.getConnection(dbConfig);
-    console.log('Conexión establecida con éxito.');
-
+    connection = await oracledb.getConnection(dbConfig);
+    
     const result = await connection.execute(
-      `SELECT
-         c.ID_US,
-         u.NOMBRE_US || ' ' || u.APELLIDO_US AS NOMBRE_COMPLETO,
-         c.ID_LISTA,
-         c.PERIODO_POSTULACION,
-         c.DIGNIDAD_CAND,
-         c.ESTADO_CAND,
-         l.NOMBRE_LISTA
+      `SELECT 
+        c.ID_LISTA as idLista,
+        c.DIGNIDAD_CAND as dignidadCand,
+        u.NOMBRE_US || ' ' || u.APELLIDO_US as nombreCompleto,
+        l.NOMBRE_LISTA as nombreLista
        FROM CANDIDATOS c
-       JOIN LISTAS l ON c.ID_LISTA = l.ID_LISTA AND c.PERIODO_POSTULACION = l.PERIODO_POSTULACION
        JOIN USUARIOS u ON c.ID_US = u.ID_US
-       WHERE c.PERIODO_POSTULACION = :periodo`,
-      [periodo]
+       JOIN LISTAS l ON c.ID_LISTA = l.ID_LISTA AND c.PERIODO_POSTULACION = l.PERIODO_POSTULACION
+       WHERE c.PERIODO_POSTULACION = :periodo
+       AND c.ESTADO_CAND = 1
+       ORDER BY c.ID_LISTA, c.DIGNIDAD_CAND`,
+      [periodo],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-    // console.log('Consulta SQL ejecutada con éxito.');
-    // console.log('Resultados de la consulta:', result);
 
+    // Procesar los resultados para asegurar que los caracteres especiales se manejen correctamente
     const candidatos = result.rows.map(row => ({
-      idUs: row[0],
-      nombreCompleto: row[1],
-      idLista: row[2],
-      periodoPostulacion: row[3],
-      dignidadCand: row[4],
-      estadoCand: row[5],
-      nombreLista: row[6]
+      ...row,
+      nombreCompleto: row.NOMBRECOMPLETO // Oracle devuelve en mayúsculas
     }));
 
-    // Cerrar la conexión después de obtener los resultados
-    await connection.close();
-    //console.log('Conexión cerrada.');
-
-    // Enviar respuesta con los candidatos encontrados
-    res.status(200).json(candidatos);
-    // console.log('Respuesta enviada:', candidatos);
+    res.json(candidatos);
   } catch (error) {
     console.error('Error al obtener candidatos:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({ error: 'Error al obtener los candidatos' });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error al cerrar la conexión:', err);
+      }
+    }
   }
 });
 
@@ -1323,6 +1372,43 @@ app.get('/verificar-horario', async (req, res) => {
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Nuevo endpoint para obtener nombres completos de usuarios
+app.post('/obtener-nombres-usuarios', async (req, res) => {
+  const { usuarios } = req.body;
+  let connection;
+
+  try {
+    connection = await oracledb.getConnection(dbConfig);
+    
+    const result = await connection.execute(
+      `SELECT ID_US, NOMBRE_US || ' ' || APELLIDO_US as NOMBRE_COMPLETO
+       FROM USUARIOS 
+       WHERE ID_US IN (${usuarios.map(u => `'${u}'`).join(',')})`,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    // Crear un objeto con los nombres normalizados
+    const nombres = {};
+    result.rows.forEach(row => {
+      nombres[row.ID_US] = row.NOMBRE_COMPLETO;
+    });
+
+    res.json({ nombres });
+  } catch (error) {
+    console.error('Error al obtener nombres:', error);
+    res.status(500).json({ error: 'Error al obtener los nombres' });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (error) {
+        console.error('Error al cerrar la conexión:', error);
+      }
+    }
+  }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
