@@ -207,19 +207,19 @@
             const listasNormales = data.filter(lista => lista.nombre.toLowerCase() !== 'nulo');
             const listaNulo = data.find(lista => lista.nombre.toLowerCase() === 'nulo');
 
-            html = '<table class="table table-bordered table-striped table-hover"><thead class="table-dark"><tr><th>Lista</th><th>Votos</th></tr></thead><tbody>';
+            html = '<table class="table table-bordered table-striped table-hover"><thead class="table-dark"><tr><th>Lista</th><th>Votos</th><th>Porcentaje</th></tr></thead><tbody>';
             listasNormales.forEach(lista => {
-              html += `<tr><td>${lista.nombre}</td><td>${lista.votos}</td></tr>`;
+              html += `<tr><td>${lista.nombre}</td><td>${lista.votos}</td><td>${lista.porcentaje}%</td></tr>`;
             });
 
             if (listaNulo) {
-              html += `<tr><td>NULO</td><td>${listaNulo.votos}</td></tr>`;
+              html += `<tr><td>NULO</td><td>${listaNulo.votos}</td><td>${listaNulo.porcentaje}%</td></tr>`;
             }
             
             html += '</tbody></table>';
 
             const ganador = listasNormales.reduce((max, lista) => (lista.votos > max.votos ? lista : max), listasNormales[0]);
-            html += `<p>Ganador: ${ganador.nombre} con ${ganador.votos} votos</p>`;
+            html += `<p>Ganador: ${ganador.nombre} con ${ganador.votos} votos (${ganador.porcentaje}%)</p>`;
           } else if (filterType === 'departamento') {
             html = '<table class="table table-bordered table-striped table-hover"><thead class="table-dark"><tr><th>Departamento</th><th>Votos</th></tr></thead><tbody>';
             data.forEach(departamento => {
