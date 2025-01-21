@@ -354,15 +354,29 @@ async function verificarFechaYHora(req, res, next) {
 
     // Convertir horas a minutos para comparación
     const [horaActualHH, horaActualMM] = horaActual.split(':').map(Number);
-    const minutosActuales = horaActualHH * 60 + horaActualMM;
+    let minutosActuales = horaActualHH * 60 + horaActualMM;
 
     const [horaInicioHH, horaInicioMM] = horaInicio.split(':').map(Number);
     const minutosInicio = horaInicioHH * 60 + horaInicioMM;
 
     const [horaFinHH, horaFinMM] = horaFin.split(':').map(Number);
-    const minutosFinVotacion = horaFinHH * 60 + horaFinMM;
+    let minutosFinVotacion = horaFinHH * 60 + horaFinMM;
 
-    console.log('Minutos actuales:', minutosActuales);
+    // Si la hora de fin es menor que la hora de inicio, significa que es del día siguiente
+    if (minutosFinVotacion < minutosInicio) {
+        minutosFinVotacion += 24 * 60; // Agregar 24 horas en minutos
+        // Si la hora actual es menor que la hora de inicio, también debe ajustarse
+        if (minutosActuales < minutosInicio) {
+            minutosActuales += 24 * 60;
+        }
+    }
+
+    console.log('Fecha votación:', fechaVotacion);
+    console.log('Fecha actual:', fechaActual);
+    console.log('Hora actual:', horaActual);
+    console.log('Hora inicio:', horaInicio);
+    console.log('Hora fin:', horaFin);
+    console.log('Minutos actuales (ajustados):', minutosActuales);
     console.log('Rango permitido:', minutosInicio, 'a', minutosFinVotacion);
 
     // Verificar si estamos en el día correcto
@@ -370,11 +384,16 @@ async function verificarFechaYHora(req, res, next) {
                  fechaActObj.getMonth() === fechaVotObj.getMonth() &&
                  fechaActObj.getDate() === fechaVotObj.getDate();
     
+    // Si la hora de fin es del día siguiente, también debemos permitir votar si es el día siguiente
+    const esDiaSiguiente = !esHoy && 
+                          fechaActObj.getTime() === fechaVotObj.getTime() + 24 * 60 * 60 * 1000 &&
+                          minutosActuales < minutosFinVotacion - 24 * 60;
+    
     const estaEnHorario = minutosActuales >= minutosInicio && minutosActuales <= minutosFinVotacion;
 
     await connection.close();
 
-    if (!esHoy) {
+    if (!esHoy && !esDiaSiguiente) {
       return res.json({ 
         puedeVotar: false, 
         mensaje: `La votación está programada para el ${fechaVotacion}.\nHorario de votación: ${horaInicio} a ${horaFin}.\n\nPor favor, ingrese nuevamente en la fecha y hora indicadas.` 
@@ -384,7 +403,7 @@ async function verificarFechaYHora(req, res, next) {
     if (!estaEnHorario) {
       return res.json({ 
         puedeVotar: false, 
-        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
+        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}${minutosFinVotacion > 24 * 60 ? ' del día siguiente' : ''}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
       });
     }
 
@@ -1425,20 +1444,29 @@ app.get('/verificar-horario', async (req, res) => {
 
     // Convertir horas a minutos para comparación
     const [horaActualHH, horaActualMM] = horaActual.split(':').map(Number);
-    const minutosActuales = horaActualHH * 60 + horaActualMM;
+    let minutosActuales = horaActualHH * 60 + horaActualMM;
 
     const [horaInicioHH, horaInicioMM] = horaInicio.split(':').map(Number);
     const minutosInicio = horaInicioHH * 60 + horaInicioMM;
 
     const [horaFinHH, horaFinMM] = horaFin.split(':').map(Number);
-    const minutosFinVotacion = horaFinHH * 60 + horaFinMM;
+    let minutosFinVotacion = horaFinHH * 60 + horaFinMM;
+
+    // Si la hora de fin es menor que la hora de inicio, significa que es del día siguiente
+    if (minutosFinVotacion < minutosInicio) {
+        minutosFinVotacion += 24 * 60; // Agregar 24 horas en minutos
+        // Si la hora actual es menor que la hora de inicio, también debe ajustarse
+        if (minutosActuales < minutosInicio) {
+            minutosActuales += 24 * 60;
+        }
+    }
 
     console.log('Fecha votación:', fechaVotacion);
     console.log('Fecha actual:', fechaActual);
     console.log('Hora actual:', horaActual);
     console.log('Hora inicio:', horaInicio);
     console.log('Hora fin:', horaFin);
-    console.log('Minutos actuales:', minutosActuales);
+    console.log('Minutos actuales (ajustados):', minutosActuales);
     console.log('Rango permitido:', minutosInicio, 'a', minutosFinVotacion);
 
     // Verificar si estamos en el día correcto
@@ -1446,11 +1474,16 @@ app.get('/verificar-horario', async (req, res) => {
                  fechaActObj.getMonth() === fechaVotObj.getMonth() &&
                  fechaActObj.getDate() === fechaVotObj.getDate();
     
+    // Si la hora de fin es del día siguiente, también debemos permitir votar si es el día siguiente
+    const esDiaSiguiente = !esHoy && 
+                          fechaActObj.getTime() === fechaVotObj.getTime() + 24 * 60 * 60 * 1000 &&
+                          minutosActuales < minutosFinVotacion - 24 * 60;
+    
     const estaEnHorario = minutosActuales >= minutosInicio && minutosActuales <= minutosFinVotacion;
 
     await connection.close();
 
-    if (!esHoy) {
+    if (!esHoy && !esDiaSiguiente) {
       return res.json({ 
         puedeVotar: false, 
         mensaje: `La votación está programada para el ${fechaVotacion}.\nHorario de votación: ${horaInicio} a ${horaFin}.\n\nPor favor, ingrese nuevamente en la fecha y hora indicadas.` 
@@ -1460,7 +1493,7 @@ app.get('/verificar-horario', async (req, res) => {
     if (!estaEnHorario) {
       return res.json({ 
         puedeVotar: false, 
-        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
+        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}${minutosFinVotacion > 24 * 60 ? ' del día siguiente' : ''}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
       });
     }
 
