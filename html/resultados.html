@@ -229,12 +229,20 @@
 
               // Verificar si los votos nulos superan a la lista ganadora
               if (listaNulo && listaNulo.votos > maxVotos) {
-                html += `<p style="color: red;">Existe mayor cantidad de votos nulos (${listaNulo.votos} votos - ${listaNulo.porcentaje}%) que la lista con mayor porcentaje ${listasGanadoras[0].nombre} (${maxVotos} votos - ${listasGanadoras[0].porcentaje}%). Se debe repetir el proceso electoral.</p>`;
+                html += `<p style="color: red; text-align: center; font-weight: bold;">
+                  ATENCIÓN: De acuerdo a los resultados obtenidos, se registra un total de ${listaNulo.votos} votos nulos (${listaNulo.porcentaje}%), 
+                  superando a la lista con mayor votación ${listasGanadoras[0].nombre} que obtuvo ${maxVotos} votos (${listasGanadoras[0].porcentaje}%).<br><br>
+                  En conformidad con el reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
+                  se deberá convocar a un nuevo proceso electoral para la elección de la directiva.</p>`;
               } else if (listasGanadoras.length > 1) {
                 // Caso de empate
                 const listasPorcentaje = listasGanadoras[0].porcentaje;
                 const nombresListas = listasGanadoras.map(lista => lista.nombre).join(' y ');
-                html += `<p>Existe un empate entre las listas ${nombresListas} con mayor porcentaje (${listasPorcentaje}%) con ${maxVotos} votos</p>`;
+                html += `<p style="text-align: center; font-weight: bold;">
+                  ATENCIÓN: Se ha registrado un empate técnico entre las listas ${nombresListas}, 
+                  cada una con ${maxVotos} votos, representando un ${listasPorcentaje}% del total de votos emitidos.<br><br>
+                  De acuerdo al reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
+                  se deberá convocar a un nuevo proceso electoral para definir la directiva ganadora.</p>`;
               } else {
                 // Caso de un solo ganador
                 const ganador = listasGanadoras[0];
