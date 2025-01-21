@@ -304,30 +304,27 @@ async function verificarFechaYHora(req, res, next) {
   try {
     connection = await oracledb.getConnection(dbConfig);
     
-    // Obtener la fecha y hora actual del sistema local
-    const ahora = new Date();
-    // Ajustar al formato requerido
-    const fechaActual = ahora.toLocaleDateString('es-EC', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).replace(/\//g, '/');
-    
-    const horaActual = ahora.toLocaleTimeString('es-EC', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
+    // Obtener la fecha y hora actual de Oracle en la zona horaria de US East (Ashburn)
+    const timeResult = await connection.execute(
+      `SELECT 
+        TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York', 'DD/MM/YYYY') as fecha_actual,
+        TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York', 'HH24:MI') as hora_actual
+       FROM DUAL`
+    );
 
-    console.log('Fecha actual Sistema:', fechaActual);
-    console.log('Hora actual Sistema:', horaActual);
+    const fechaActual = timeResult.rows[0][0];
+    const horaActual = timeResult.rows[0][1];
+
+    console.log('Fecha actual Oracle (US East):', fechaActual);
+    console.log('Hora actual Oracle (US East):', horaActual);
 
     // Obtener configuración de votación
     const { periodo } = req.query;
     const configResult = await connection.execute(
-      `SELECT TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
-              HORA_INICIO,
-              HORA_FIN
+      `SELECT 
+        TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
+        HORA_INICIO,
+        HORA_FIN
        FROM CONFIGURACION_VOTACION 
        WHERE PERIODO_POSTULACION = :periodo`,
       [periodo]
@@ -345,8 +342,6 @@ async function verificarFechaYHora(req, res, next) {
     const horaFin = configResult.rows[0][2];
 
     console.log('Fecha votación:', fechaVotacion);
-    console.log('Fecha actual:', fechaActual);
-    console.log('Hora actual:', horaActual);
     console.log('Hora inicio:', horaInicio);
     console.log('Hora fin:', horaFin);
 
@@ -1385,29 +1380,26 @@ app.get('/verificar-horario', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     
-    // Obtener la fecha y hora actual del sistema local
-    const ahora = new Date();
-    // Ajustar al formato requerido
-    const fechaActual = ahora.toLocaleDateString('es-EC', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).replace(/\//g, '/');
-    
-    const horaActual = ahora.toLocaleTimeString('es-EC', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
+    // Obtener la fecha y hora actual de Oracle en la zona horaria de US East (Ashburn)
+    const timeResult = await connection.execute(
+      `SELECT 
+        TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York', 'DD/MM/YYYY') as fecha_actual,
+        TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York', 'HH24:MI') as hora_actual
+       FROM DUAL`
+    );
 
-    console.log('Fecha actual Sistema:', fechaActual);
-    console.log('Hora actual Sistema:', horaActual);
+    const fechaActual = timeResult.rows[0][0];
+    const horaActual = timeResult.rows[0][1];
+
+    console.log('Fecha actual Oracle (US East):', fechaActual);
+    console.log('Hora actual Oracle (US East):', horaActual);
 
     // Obtener configuración de votación
     const configResult = await connection.execute(
-      `SELECT TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
-              HORA_INICIO,
-              HORA_FIN
+      `SELECT 
+        TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
+        HORA_INICIO,
+        HORA_FIN
        FROM CONFIGURACION_VOTACION 
        WHERE PERIODO_POSTULACION = :periodo`,
       [periodo]
