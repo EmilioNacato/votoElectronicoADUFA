@@ -206,20 +206,60 @@
           if (filterType === 'lista') {
             const listasNormales = data.filter(lista => lista.nombre.toLowerCase() !== 'nulo');
             const listaNulo = data.find(lista => lista.nombre.toLowerCase() === 'nulo');
+            const listaBlanco = data.find(lista => lista.nombre.toLowerCase() === 'blanco');
 
-            html = '<table class="table table-bordered table-striped table-hover"><thead class="table-dark"><tr><th>Lista</th><th>Votos</th></tr></thead><tbody>';
+            html = '<table class="table table-bordered table-striped table-hover">' +
+                   '<thead class="table-dark">' +
+                   '<tr><th>Lista</th><th>Votos</th><th>Porcentaje</th></tr>' +
+                   '</thead><tbody>';
+            
+            // Calcular total de votos válidos (excluyendo nulos y blancos)
+            const totalVotosValidos = listasNormales.reduce((sum, lista) => sum + lista.votos, 0);
+            const totalVotos = totalVotosValidos + (listaNulo ? listaNulo.votos : 0) + (listaBlanco ? listaBlanco.votos : 0);
+
+            // Mostrar listas normales con porcentajes
             listasNormales.forEach(lista => {
-              html += `<tr><td>${lista.nombre}</td><td>${lista.votos}</td></tr>`;
+              const porcentaje = ((lista.votos / totalVotos) * 100).toFixed(2);
+              html += `<tr><td>${lista.nombre}</td><td>${lista.votos}</td><td>${porcentaje}%</td></tr>`;
             });
 
+            // Agregar subtotal de votos válidos
+            html += `<tr class="table-info"><td><strong>Total Votos Válidos</strong></td><td><strong>${totalVotosValidos}</strong></td><td><strong>${((totalVotosValidos/totalVotos) * 100).toFixed(2)}%</strong></td></tr>`;
+
+            // Agregar votos nulos y blancos si existen
             if (listaNulo) {
-              html += `<tr><td>NULO</td><td>${listaNulo.votos}</td></tr>`;
+              const porcentajeNulo = ((listaNulo.votos / totalVotos) * 100).toFixed(2);
+              html += `<tr class="table-warning"><td>Votos Nulos</td><td>${listaNulo.votos}</td><td>${porcentajeNulo}%</td></tr>`;
             }
+            
+            if (listaBlanco) {
+              const porcentajeBlanco = ((listaBlanco.votos / totalVotos) * 100).toFixed(2);
+              html += `<tr class="table-light"><td>Votos en Blanco</td><td>${listaBlanco.votos}</td><td>${porcentajeBlanco}%</td></tr>`;
+            }
+
+            // Agregar total general
+            html += `<tr class="table-dark"><td><strong>Total General</strong></td><td><strong>${totalVotos}</strong></td><td><strong>100%</strong></td></tr>`;
             
             html += '</tbody></table>';
 
-            const ganador = listasNormales.reduce((max, lista) => (lista.votos > max.votos ? lista : max), listasNormales[0]);
-            html += `<p>Ganador: ${ganador.nombre} con ${ganador.votos} votos</p>`;
+            // Verificar si hay empate
+            const maxVotos = Math.max(...listasNormales.map(lista => lista.votos));
+            const listasGanadoras = listasNormales.filter(lista => lista.votos === maxVotos);
+
+            if (listasGanadoras.length > 1) {
+              html += '<div class="alert alert-warning" role="alert">' +
+                     '<h4 class="alert-heading">¡Empate detectado!</h4>' +
+                     '<p>Se ha detectado un empate entre las siguientes listas:</p>' +
+                     '<ul>' +
+                     listasGanadoras.map(lista => `<li>${lista.nombre} con ${lista.votos} votos</li>`).join('') +
+                     '</ul></div>';
+            } else if (listasGanadoras.length === 1) {
+              const ganador = listasGanadoras[0];
+              const porcentajeGanador = ((ganador.votos / totalVotosValidos) * 100).toFixed(2);
+              html += `<div class="alert alert-success" role="alert">` +
+                     `<h4 class="alert-heading">Lista Ganadora</h4>` +
+                     `<p>${ganador.nombre} con ${ganador.votos} votos (${porcentajeGanador}% de los votos válidos)</p></div>`;
+            }
           } else if (filterType === 'departamento') {
             html = '<table class="table table-bordered table-striped table-hover"><thead class="table-dark"><tr><th>Departamento</th><th>Votos</th></tr></thead><tbody>';
             data.forEach(departamento => {
@@ -238,6 +278,7 @@
           if (filterType === 'lista') {
               const listasNormales = data.filter(lista => lista.nombre.toLowerCase() !== 'nulo');
               const listaNulo = data.find(lista => lista.nombre.toLowerCase() === 'nulo');
+              const listaBlanco = data.find(lista => lista.nombre.toLowerCase() === 'blanco');
 
               labels = listasNormales.map(lista => lista.nombre);
               votosData = listasNormales.map(lista => lista.votos);
