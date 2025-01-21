@@ -1281,7 +1281,7 @@ app.get('/api/resultados/blockchain', async (req, res) => {
   try {
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
-      chaincode: "data_synchronization_votos_v8",
+      chaincode: "data_synchronization_votos_v9",
       args: [
         "getVotesByRange",
         "",
@@ -1296,12 +1296,18 @@ app.get('/api/resultados/blockchain', async (req, res) => {
       }
     });
 
+    console.log('Respuesta de blockchain:', blockchainResponse.data);
+
     if (blockchainResponse.data.returnCode !== 'Success') {
+      console.error('Error en la respuesta de blockchain:', blockchainResponse.data);
       throw new Error(blockchainResponse.data.error || 'Error al obtener datos de blockchain');
     }
 
-    const votosBlockchain = blockchainResponse.data.result.payload;
+    const votosBlockchain = blockchainResponse.data.result.payload || [];
+    console.log('Votos obtenidos:', votosBlockchain);
+    
     const votosPeriodo = votosBlockchain.filter(voto => voto.periodoPostulacion === periodo);
+    console.log('Votos filtrados por periodo:', votosPeriodo);
     
     let resultados;
     
@@ -1327,14 +1333,7 @@ app.get('/api/resultados/blockchain', async (req, res) => {
         });
       }
 
-      // Identificar lista ganadora
-      if (resultadosFormateados.length > 0) {
-        const ganadora = resultadosFormateados.reduce((max, lista) => 
-          lista.votos > max.votos ? lista : max
-        );
-        console.log(`Lista ganadora: ${ganadora.nombre} con ${ganadora.votos} votos`);
-      }
-
+      console.log('Resultados formateados:', resultadosFormateados);
       res.json(resultadosFormateados);
 
     } else if (filterType === 'departamento') {
@@ -1361,6 +1360,7 @@ app.get('/api/resultados/blockchain', async (req, res) => {
           votos: votos
         }));
 
+        console.log('Resultados por departamento:', resultadosFormateados);
         res.json(resultadosFormateados);
       } finally {
         await connection.close();
@@ -1374,7 +1374,8 @@ app.get('/api/resultados/blockchain', async (req, res) => {
     }
     res.status(500).json({
       message: 'Error al obtener los resultados de blockchain',
-      error: err.response?.data || err.message
+      error: err.response?.data || err.message,
+      details: err.stack
     });
   }
 });
