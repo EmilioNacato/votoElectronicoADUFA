@@ -238,11 +238,17 @@
                 // Caso de empate
                 const listasPorcentaje = listasGanadoras[0].porcentaje;
                 const nombresListas = listasGanadoras.map(lista => lista.nombre).join(' y ');
-                html += `<p style="color: red; text-align: center; font-weight: bold; font-size: 16px;">
-                  ATENCIÓN: Se ha registrado un empate técnico entre las listas ${nombresListas}, 
-                  cada una con ${maxVotos} votos, representando un ${listasPorcentaje}% del total de votos emitidos.<br><br>
-                  De acuerdo al reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
-                  se deberá convocar a un nuevo proceso electoral para definir la directiva ganadora.</p>`;
+                html += `
+                  <div style="margin: 20px 0;">
+                    <p style="color: #dc3545; text-align: center; font-weight: bold; font-size: 16px; margin: 0;">
+                      ATENCIÓN: Se ha registrado un empate técnico entre las listas ${nombresListas}, 
+                      cada una con ${maxVotos} votos, representando un ${listasPorcentaje}% del total de votos emitidos.
+                    </p>
+                    <p style="color: #dc3545; text-align: center; font-weight: bold; font-size: 16px; margin-top: 15px;">
+                      De acuerdo al reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
+                      se deberá convocar a un nuevo proceso electoral para definir la directiva ganadora.
+                    </p>
+                  </div>`;
               } else {
                 // Caso de un solo ganador
                 const ganador = listasGanadoras[0];
