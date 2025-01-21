@@ -788,7 +788,7 @@ app.post('/guardar-votos', async (req, res) => {
     await connection.execute(insertQuery, [id_lista, period, usuario, aceptaAuditoria]);
 
     // Llamada a la Blockchain platform de OCI
-    /* const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
+    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v9",
       args: [
@@ -812,11 +812,11 @@ app.post('/guardar-votos', async (req, res) => {
       }
     });
 
-    console.log('Blockchain response:', blockchainResponse.data); */
+    console.log('Blockchain response:', blockchainResponse.data);
 
     await connection.commit();
 
-    /* // Enviar correo de confirmación
+    // Enviar correo de confirmación
     const emailQuery = `SELECT EMAIL_US FROM USUARIOS WHERE ID_US = :usuario`;
     const emailResult = await connection.execute(emailQuery, [usuario]);
     const emailUsuario = emailResult.rows[0][0];
@@ -842,7 +842,7 @@ app.post('/guardar-votos', async (req, res) => {
       } else {
         console.log('Correo de confirmación enviado:', info.response);
       }
-    }); */
+    });
 
     res.status(200).json({ message: 'Su voto fue guardado correctamente y se ha enviado un correo de confirmación.' });
 
