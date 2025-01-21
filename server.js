@@ -512,6 +512,22 @@ app.post('/guardar-candidatos', async (req, res) => {
       console.log("Lista nulo guardada");
     }
 
+    // Verificar si ya existe el registro blanco para este periodo
+    const checkBlancoResult = await connection.execute(
+      `SELECT COUNT(*) FROM LISTAS WHERE ID_LISTA = 'blanco' AND PERIODO_POSTULACION = :periodo`,
+      [periodo]
+    );
+
+    // Solo insertar blanco si no existe
+    if (checkBlancoResult.rows[0][0] === 0) {
+      await connection.execute(
+        `INSERT INTO LISTAS (ID_LISTA, PERIODO_POSTULACION, ESTADO_LISTA, NOMBRE_LISTA)
+         VALUES ('blanco', :periodo, 1, 'blanco')`,
+        [periodo]
+      );
+      console.log("Lista blanco guardada");
+    }
+
     // Procesar cada lista
     for (const [index, lista] of formData.listas.entries()) {
       const id_lista = `LISTA${index + 1}`;
@@ -636,6 +652,7 @@ app.post('/guardar-votos', async (req, res) => {
     const { usuario, formData } = req.body;
     const period = formData.periodo;
     const id_lista = formData.idLista;
+    const nombreLista = formData.nombreLista;
     const aceptaAuditoria = formData.aceptaAuditoria ? 1 : 0;
 
     // Construir el idVoto en el formato requerido
@@ -691,14 +708,15 @@ app.post('/guardar-votos', async (req, res) => {
     await connection.execute(insertQuery, [id_lista, period, usuario, aceptaAuditoria]);
 
     // Llamada a la Blockchain platform de OCI
-    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
+    /* const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
-      chaincode: "data_synchronization_votos_v8",
+      chaincode: "data_synchronization_votos_v9",
       args: [
         "createVotosListas",
         JSON.stringify({
           idVoto: idVoto,
           idLista: id_lista,
+          nombreLista: nombreLista,
           periodoPostulacion: period,
           idUs: usuario,
           fechaVotacion: new Date().toISOString(),
@@ -714,11 +732,11 @@ app.post('/guardar-votos', async (req, res) => {
       }
     });
 
-    console.log('Blockchain response:', blockchainResponse.data);
+    console.log('Blockchain response:', blockchainResponse.data); */
 
     await connection.commit();
 
-    // Enviar correo de confirmación
+    /* // Enviar correo de confirmación
     const emailQuery = `SELECT EMAIL_US FROM USUARIOS WHERE ID_US = :usuario`;
     const emailResult = await connection.execute(emailQuery, [usuario]);
     const emailUsuario = emailResult.rows[0][0];
@@ -744,7 +762,7 @@ app.post('/guardar-votos', async (req, res) => {
       } else {
         console.log('Correo de confirmación enviado:', info.response);
       }
-    });
+    }); */
 
     res.status(200).json({ message: 'Su voto fue guardado correctamente y se ha enviado un correo de confirmación.' });
 

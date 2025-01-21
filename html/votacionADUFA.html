@@ -213,6 +213,7 @@
         try {
           const response = await fetch(`/obtener-candidatos?periodo=${periodo}`);
           const data = await response.json();
+          console.log('Respuesta del servidor:', data);
           const listas = {};
 
           data.forEach(candidate => {
@@ -276,7 +277,7 @@
             <div class="radio-tile-group">
               <div class="form-check-inline col-md-1"></div>
               <div class="form-check-inline col-md-10">
-                <input class="radio-button-nulo" type="radio" id="nulo" name="lista" value="nulo">
+                <input class="radio-button-nulo" type="radio" id="nulo" name="lista" value="nulo" data-nombre-lista="nulo">
                 <label class="btn-nulo" for="nulo"> VOTAR NULO</label>
               </div>
               <div class="form-check-inline col-md-1"></div>`;
@@ -285,7 +286,7 @@
             const lista = listas[listaId];
             let listaHtml = `
               <div class="input-container form-check-inline">
-                <input class="radio-button" type="radio" id="lista${index + 1}" name="lista" value="LISTA${index + 1}">&nbsp&nbsp
+                <input class="radio-button" type="radio" id="lista${index + 1}" name="lista" value="LISTA${index + 1}" data-nombre-lista="${lista.nombreLista}">&nbsp&nbsp
                 <div class="radio-tile">
                   <h4 style="color: var(--accent-color); padding-top: 15px; font-weight: bold;">Lista ${index + 1} - ${lista.nombreLista}</h4>
                   <hr>
@@ -347,7 +348,7 @@
             checkboxesContainer.innerHTML += listaHtml;
           });
 
-          // Agregar campo "NULO" al final
+          // Cerrar el formulario
           checkboxesContainer.innerHTML += `<br>
               </div></form>
             `;
@@ -417,11 +418,14 @@
 
         try {
           const usuario = localStorage.getItem('usuario');
-          const listaseleccionada = document.querySelector('input[name="lista"]:checked').value;
+          const selectedRadio = document.querySelector('input[name="lista"]:checked');
+          const listaseleccionada = selectedRadio.value;
+          const nombreLista = selectedRadio.dataset.nombreLista;
 
           const formData = {
             periodo: periodo,
             idLista: listaseleccionada,
+            nombreLista: nombreLista,
             aceptaAuditoria: acceptAudit // Enviar si el usuario acepta estar en la auditoría
           };
 
