@@ -1350,7 +1350,7 @@ app.get('/api/resultados/blockchain', async (req, res) => {
           const idLista = voto.idLista;
           if (!acc[idLista]) {
             acc[idLista] = {
-              nombre: `${idLista} - ${voto.nombreLista}`,
+              nombre: voto.nombreLista,
               votos: 0
             };
           }
@@ -1358,8 +1358,29 @@ app.get('/api/resultados/blockchain', async (req, res) => {
           return acc;
         }, {});
 
+      // Asegurarnos que existan las entradas para votos nulos y blancos
+      if (!votosPorLista['nulo']) {
+        votosPorLista['nulo'] = {
+          nombre: 'nulo',
+          votos: 0
+        };
+      }
+      if (!votosPorLista['blanco']) {
+        votosPorLista['blanco'] = {
+          nombre: 'blanco',
+          votos: 0
+        };
+      }
+
       // Convertir a array para la respuesta
-      const resultado = Object.values(votosPorLista);
+      const resultado = Object.entries(votosPorLista)
+        .filter(([id]) => id !== 'nulo' && id !== 'blanco') // Filtrar temporalmente nulos y blancos
+        .map(([_, data]) => data); // Convertir solo las listas normales
+
+      // Agregar nulos y blancos al final
+      resultado.push(votosPorLista['nulo']);
+      resultado.push(votosPorLista['blanco']);
+
       res.json(resultado);
     } else {
       throw new Error(blockchainResponse.data.error || 'Error desconocido en la blockchain');
