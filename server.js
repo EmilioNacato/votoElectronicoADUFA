@@ -300,61 +300,111 @@ app.post('/guardar-configuracion', async (req, res) => {
 // });
 
 async function verificarFechaYHora(req, res, next) {
-  const userId = req.body.username || req.query.username;
-  console.log('ID del usuario:', userId);
-
-  if (!userId) {
-    return res.status(400).send('ID de usuario no proporcionado.');
-  }
-
+  let connection;
   try {
-    const connection = await oracledb.getConnection(dbConfig);
-    console.log('Conexión a la base de datos establecida.');
+    connection = await oracledb.getConnection(dbConfig);
+    
+    // Obtener la fecha y hora actual del sistema local
+    const ahora = new Date();
+    // Ajustar al formato requerido
+    const fechaActual = ahora.toLocaleDateString('es-EC', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+    
+    const horaActual = ahora.toLocaleTimeString('es-EC', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
 
-    // Obtener la configuración de votación para el periodo actual
-    const result = await connection.execute(
-      `SELECT HORA_INICIO, HORA_FIN FROM CONFIGURACION_VOTACION WHERE PERIODO_POSTULACION = :periodo`,
-      [global.fechaPublicacion] // Suponiendo que global.fechaPublicacion contiene el periodo actual
+    console.log('Fecha actual Sistema:', fechaActual);
+    console.log('Hora actual Sistema:', horaActual);
+
+    // Obtener configuración de votación
+    const { periodo } = req.query;
+    const configResult = await connection.execute(
+      `SELECT TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
+              HORA_INICIO,
+              HORA_FIN
+       FROM CONFIGURACION_VOTACION 
+       WHERE PERIODO_POSTULACION = :periodo`,
+      [periodo]
     );
 
-    console.log('Resultado de la consulta de configuración:', result.rows);
-
-    if (result.rows.length > 0) {
-      const horaInicio = result.rows[0][0];
-      const horaFin = result.rows[0][1];
-      console.log('Hora de inicio:', horaInicio);
-      console.log('Hora de fin:', horaFin);
-
-      const ahora = new Date();
-      const horaActual = ahora.getHours() + ahora.getMinutes() / 60; // Convertir a horas decimales
-
-      // Convertir las horas de inicio y fin a formato decimal
-      const [horaInicioH, horaInicioM] = horaInicio.split(':').map(Number);
-      const [horaFinH, horaFinM] = horaFin.split(':').map(Number);
-      const horaInicioDecimal = horaInicioH + horaInicioM / 60;
-      const horaFinDecimal = horaFinH + horaFinM / 60;
-
-      console.log('Hora actual:', horaActual);
-      console.log('Hora de inicio en formato decimal:', horaInicioDecimal);
-      console.log('Hora de fin en formato decimal:', horaFinDecimal);
-
-      // Verificar si la hora actual está dentro del rango permitido
-      if (horaActual < horaInicioDecimal || horaActual >= horaFinDecimal) {
-        console.log('Hora fuera del rango permitido.');
-        return res.status(403).send('Fuera del horario permitido para votar.');
-      }
-
-      console.log('Hora dentro del rango permitido.');
-      next(); // Permitir acceso si todo está bien
-    } else {
-      console.log('No se encontró configuración para el periodo.');
-      return res.status(403).send('No se encontró configuración para el periodo.');
+    if (configResult.rows.length === 0) {
+      return res.json({ 
+        puedeVotar: false, 
+        mensaje: 'No se encontró configuración para el periodo especificado.' 
+      });
     }
 
+    const fechaVotacion = configResult.rows[0][0];
+    const horaInicio = configResult.rows[0][1];
+    const horaFin = configResult.rows[0][2];
+
+    console.log('Fecha votación:', fechaVotacion);
+    console.log('Fecha actual:', fechaActual);
+    console.log('Hora actual:', horaActual);
+    console.log('Hora inicio:', horaInicio);
+    console.log('Hora fin:', horaFin);
+
+    // Convertir fechas a objetos Date para comparación
+    const [diaVot, mesVot, anioVot] = fechaVotacion.split('/');
+    const fechaVotObj = new Date(anioVot, mesVot - 1, diaVot);
+    
+    const [diaAct, mesAct, anioAct] = fechaActual.split('/');
+    const fechaActObj = new Date(anioAct, mesAct - 1, diaAct);
+
+    // Convertir horas a minutos para comparación
+    const [horaActualHH, horaActualMM] = horaActual.split(':').map(Number);
+    const minutosActuales = horaActualHH * 60 + horaActualMM;
+
+    const [horaInicioHH, horaInicioMM] = horaInicio.split(':').map(Number);
+    const minutosInicio = horaInicioHH * 60 + horaInicioMM;
+
+    const [horaFinHH, horaFinMM] = horaFin.split(':').map(Number);
+    const minutosFinVotacion = horaFinHH * 60 + horaFinMM;
+
+    console.log('Minutos actuales:', minutosActuales);
+    console.log('Rango permitido:', minutosInicio, 'a', minutosFinVotacion);
+
+    // Verificar si estamos en el día correcto
+    const esHoy = fechaActObj.getFullYear() === fechaVotObj.getFullYear() &&
+                 fechaActObj.getMonth() === fechaVotObj.getMonth() &&
+                 fechaActObj.getDate() === fechaVotObj.getDate();
+    
+    const estaEnHorario = minutosActuales >= minutosInicio && minutosActuales <= minutosFinVotacion;
+
     await connection.close();
-  } catch (err) {
-    console.error('Error al verificar el rol:', err);
-    res.status(500).send('Error en el servidor');
+
+    if (!esHoy) {
+      return res.json({ 
+        puedeVotar: false, 
+        mensaje: `La votación está programada para el ${fechaVotacion}.\nHorario de votación: ${horaInicio} a ${horaFin}.\n\nPor favor, ingrese nuevamente en la fecha y hora indicadas.` 
+      });
+    }
+
+    if (!estaEnHorario) {
+      return res.json({ 
+        puedeVotar: false, 
+        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
+      });
+    }
+
+    // Si llegamos aquí, significa que estamos en el día correcto y dentro del horario
+    res.json({ 
+      puedeVotar: true, 
+      mensaje: 'Puede proceder con la votación.' 
+    });
+
+  } catch (error) {
+    console.error('Error al verificar fecha y hora:', error);
+    return res.status(500).json({ 
+      puedeVotar: false, 
+      mensaje: 'Error al verificar la fecha y hora de votación.' 
+    });
   }
 }
 
@@ -469,20 +519,22 @@ app.post('/guardar-candidatos', async (req, res) => {
     );
 
     if (configExiste.rows[0][0] === 0) {
-      // Formatear la fecha para Oracle (DD-MM-YYYY)
-      const fecha = new Date(fechaPublicacion);
-      const fechaFormateada = fecha.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }).split('/').join('-');
+      // Formatear la fecha para Oracle
+      const [year, month, day] = fechaPublicacion.split('-');
+      const fechaFormateada = `${day}/${month}/${year}`;
 
-      console.log('Insertando configuración:', { periodo, fechaFormateada, horaInicio, horaFin });
+      console.log('Insertando configuración:', {
+        periodo,
+        fechaPublicacion,
+        fechaFormateada,
+        horaInicio,
+        horaFin
+      });
 
-      // Insertar en la tabla CONFIGURACION_VOTACION usando TO_DATE para convertir la fecha
+      // Insertar en la tabla CONFIGURACION_VOTACION usando TO_DATE con el formato correcto
       await connection.execute(
         `INSERT INTO CONFIGURACION_VOTACION (PERIODO_POSTULACION, FECHA_PUBLICACION, HORA_INICIO, HORA_FIN) 
-         VALUES (:periodo, TO_DATE(:fechaPublicacion, 'DD-MM-YYYY'), :horaInicio, :horaFin)`,
+         VALUES (:periodo, TO_DATE(:fechaPublicacion, 'DD/MM/YYYY'), :horaInicio, :horaFin)`,
         {
           periodo: periodo,
           fechaPublicacion: fechaFormateada,
@@ -582,17 +634,31 @@ app.post('/guardar-candidatos', async (req, res) => {
         for (let i = 0; i < lista.vocalesPrincipales.length; i++) {
           const id_us = lista.vocalesPrincipales[i];
           if (id_us) {
-            console.log(`Insertando vocal principal ${i + 1}:`, id_us);
-            await connection.execute(
-              `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
-               VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
-              {
-                id_us: id_us,
-                id_lista: id_lista,
-                periodo: periodo,
-                dignidad: `vocalPrincipal${i + 1}`
-              }
+            console.log(`Verificando vocal principal ${i + 1}:`, id_us);
+            // Verificar si el candidato ya existe
+            const candidatoExiste = await connection.execute(
+              `SELECT COUNT(*) FROM CANDIDATOS 
+               WHERE ID_US = :id_us 
+               AND ID_LISTA = :id_lista 
+               AND PERIODO_POSTULACION = :periodo`,
+              [id_us, id_lista, periodo]
             );
+
+            if (candidatoExiste.rows[0][0] === 0) {
+              console.log(`Insertando vocal principal ${i + 1}:`, id_us);
+              await connection.execute(
+                `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
+                 VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
+                {
+                  id_us: id_us,
+                  id_lista: id_lista,
+                  periodo: periodo,
+                  dignidad: `vocalPrincipal${i + 1}`
+                }
+              );
+            } else {
+              console.log(`El candidato ${id_us} ya existe en esta lista y periodo`);
+            }
           }
         }
 
@@ -600,17 +666,31 @@ app.post('/guardar-candidatos', async (req, res) => {
         for (let i = 0; i < lista.vocalesSuplentes.length; i++) {
           const id_us = lista.vocalesSuplentes[i];
           if (id_us) {
-            console.log(`Insertando vocal suplente ${i + 1}:`, id_us);
-            await connection.execute(
-              `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
-               VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
-              {
-                id_us: id_us,
-                id_lista: id_lista,
-                periodo: periodo,
-                dignidad: `vocalSuplente${i + 1}`
-              }
+            console.log(`Verificando vocal suplente ${i + 1}:`, id_us);
+            // Verificar si el candidato ya existe
+            const candidatoExiste = await connection.execute(
+              `SELECT COUNT(*) FROM CANDIDATOS 
+               WHERE ID_US = :id_us 
+               AND ID_LISTA = :id_lista 
+               AND PERIODO_POSTULACION = :periodo`,
+              [id_us, id_lista, periodo]
             );
+
+            if (candidatoExiste.rows[0][0] === 0) {
+              console.log(`Insertando vocal suplente ${i + 1}:`, id_us);
+              await connection.execute(
+                `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
+                 VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
+                {
+                  id_us: id_us,
+                  id_lista: id_lista,
+                  periodo: periodo,
+                  dignidad: `vocalSuplente${i + 1}`
+                }
+              );
+            } else {
+              console.log(`El candidato ${id_us} ya existe en esta lista y periodo`);
+            }
           }
         }
       } else {
@@ -818,8 +898,10 @@ app.get('/obtener-candidatos', async (req, res) => {
 
     // Procesar los resultados para asegurar que los caracteres especiales se manejen correctamente
     const candidatos = result.rows.map(row => ({
-      ...row,
-      nombreCompleto: row.NOMBRECOMPLETO // Oracle devuelve en mayúsculas
+      idLista: row.IDLISTA,
+      dignidadCand: row.DIGNIDADCAND,
+      nombreCompleto: row.NOMBRECOMPLETO,
+      nombreLista: row.NOMBRELISTA
     }));
 
     res.json(candidatos);
@@ -1303,66 +1385,83 @@ app.get('/verificar-horario', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     
-    // Obtener la fecha y hora actual del servidor Oracle junto con la configuración
-    // Ajustando la zona horaria a Ecuador (America/Guayaquil)
-    const result = await connection.execute(
-      `SELECT 
-        TO_CHAR(FECHA_PUBLICACION, 'YYYY-MM-DD') as FECHA,
-        HORA_INICIO,
-        HORA_FIN,
-        TO_CHAR(SYS_EXTRACT_UTC(SYSTIMESTAMP) AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI:SS') as HORA_ACTUAL
+    // Obtener la fecha y hora actual del sistema local
+    const ahora = new Date();
+    // Ajustar al formato requerido
+    const fechaActual = ahora.toLocaleDateString('es-EC', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+    
+    const horaActual = ahora.toLocaleTimeString('es-EC', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
+    console.log('Fecha actual Sistema:', fechaActual);
+    console.log('Hora actual Sistema:', horaActual);
+
+    // Obtener configuración de votación
+    const configResult = await connection.execute(
+      `SELECT TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
+              HORA_INICIO,
+              HORA_FIN
        FROM CONFIGURACION_VOTACION 
        WHERE PERIODO_POSTULACION = :periodo`,
       [periodo]
     );
 
-    if (result.rows.length === 0) {
+    if (configResult.rows.length === 0) {
       return res.json({ 
         puedeVotar: false, 
         mensaje: 'No se encontró configuración para este periodo de votación.' 
       });
     }
 
-    const [fechaStr, horaInicio, horaFin, horaActualStr] = result.rows[0];
-    
-    // Convertir la fecha de votación a Date
-    const [yearVot, monthVot, dayVot] = fechaStr.split('-').map(Number);
-    const fechaVotacion = new Date(yearVot, monthVot - 1, dayVot);
-    
-    // Convertir la hora actual de Oracle a Date
-    const [fechaActualStr, horaActualStr24] = horaActualStr.split(' ');
-    const [yearAct, monthAct, dayAct] = fechaActualStr.split('-').map(Number);
-    const [horaAct, minAct, segAct] = horaActualStr24.split(':').map(Number);
-    const fechaActual = new Date(yearAct, monthAct - 1, dayAct, horaAct, minAct, segAct);
-    
-    // Convertir las horas de inicio y fin a minutos
-    const [horaInicioH, horaInicioM] = horaInicio.split(':').map(Number);
-    const [horaFinH, horaFinM] = horaFin.split(':').map(Number);
-    const minutosInicio = horaInicioH * 60 + horaInicioM;
-    const minutosFin = horaFinH * 60 + horaFinM;
-    const minutosActual = horaAct * 60 + minAct;
+    const fechaVotacion = configResult.rows[0][0];
+    const horaInicio = configResult.rows[0][1];
+    const horaFin = configResult.rows[0][2];
 
-    console.log('Fecha votación:', fechaVotacion.toLocaleDateString());
-    console.log('Fecha actual:', fechaActual.toLocaleDateString());
-    console.log('Hora actual:', `${horaAct}:${minAct.toString().padStart(2, '0')}`);
+    // Convertir fechas a objetos Date para comparación
+    const [diaVot, mesVot, anioVot] = fechaVotacion.split('/');
+    const fechaVotObj = new Date(anioVot, mesVot - 1, diaVot);
+    
+    const [diaAct, mesAct, anioAct] = fechaActual.split('/');
+    const fechaActObj = new Date(anioAct, mesAct - 1, diaAct);
+
+    // Convertir horas a minutos para comparación
+    const [horaActualHH, horaActualMM] = horaActual.split(':').map(Number);
+    const minutosActuales = horaActualHH * 60 + horaActualMM;
+
+    const [horaInicioHH, horaInicioMM] = horaInicio.split(':').map(Number);
+    const minutosInicio = horaInicioHH * 60 + horaInicioMM;
+
+    const [horaFinHH, horaFinMM] = horaFin.split(':').map(Number);
+    const minutosFinVotacion = horaFinHH * 60 + horaFinMM;
+
+    console.log('Fecha votación:', fechaVotacion);
+    console.log('Fecha actual:', fechaActual);
+    console.log('Hora actual:', horaActual);
     console.log('Hora inicio:', horaInicio);
     console.log('Hora fin:', horaFin);
-    console.log('Minutos actuales:', minutosActual);
-    console.log('Rango permitido:', minutosInicio, 'a', minutosFin);
+    console.log('Minutos actuales:', minutosActuales);
+    console.log('Rango permitido:', minutosInicio, 'a', minutosFinVotacion);
 
     // Verificar si estamos en el día correcto
-    const esHoy = fechaActual.getFullYear() === fechaVotacion.getFullYear() &&
-                 fechaActual.getMonth() === fechaVotacion.getMonth() &&
-                 fechaActual.getDate() === fechaVotacion.getDate();
+    const esHoy = fechaActObj.getFullYear() === fechaVotObj.getFullYear() &&
+                 fechaActObj.getMonth() === fechaVotObj.getMonth() &&
+                 fechaActObj.getDate() === fechaVotObj.getDate();
     
-    const estaEnHorario = minutosActual >= minutosInicio && minutosActual <= minutosFin;
+    const estaEnHorario = minutosActuales >= minutosInicio && minutosActuales <= minutosFinVotacion;
 
     await connection.close();
 
     if (!esHoy) {
       return res.json({ 
         puedeVotar: false, 
-        mensaje: `La votación está programada para el ${fechaVotacion.toLocaleDateString()}.\nHorario de votación: ${horaInicio} a ${horaFin}.\n\nPor favor, ingrese nuevamente en la fecha y hora indicadas.` 
+        mensaje: `La votación está programada para el ${fechaVotacion}.\nHorario de votación: ${horaInicio} a ${horaFin}.\n\nPor favor, ingrese nuevamente en la fecha y hora indicadas.` 
       });
     }
 
