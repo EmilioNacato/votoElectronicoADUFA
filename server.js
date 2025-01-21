@@ -16,6 +16,8 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const axios = require('axios');
 const sharp = require('sharp');
+const csv = require('csv-parse');
+const XLSX = require('xlsx');
 
 const app = express();
 const PORT = 40000;
@@ -66,6 +68,39 @@ const upload = multer({
     files: 20 // máximo 20 archivos
   },
   fileFilter: fileFilter
+});
+
+// Configuración de multer para archivos CSV y Excel
+const storageDocumentos = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = 'uploads';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const fileFilterDocumentos = (req, file, cb) => {
+  // Verificar el tipo de archivo
+  if (file.mimetype === 'text/csv' || 
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.ms-excel') {
+    cb(null, true);
+  } else {
+    cb(new Error('Solo se permiten archivos CSV o Excel (.xlsx)'), false);
+  }
+};
+
+const uploadDocumentos = multer({
+  storage: storageDocumentos,
+  fileFilter: fileFilterDocumentos,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB máximo
+  }
 });
 
 app.post('/uploadProvisionales', upload.any(), async (req, res) => {
@@ -150,18 +185,18 @@ const transporter = nodemailer.createTransport({
 
 
 // Configuración de la base de datos
-// const dbConfig = {
-//   user: 'C##emilioadmin',
-//   password: 'Emilio.*142002',
-//   connectString: 'localhost/XE'
-// };
+const dbConfig = {
+  user: 'C##emilioadmin',
+  password: 'Emilio.*142002',
+  connectString: 'localhost/XE'
+};
 
 // Configuración de la base de datos
-const dbConfig = {
-  user: 'ADMIN', // Usuario de la base de datos
-  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: 'votoelectronico_high' // Usar el alias del tnsnames.ora
-};
+// const dbConfig = {
+//   user: 'ADMIN', // Usuario de la base de datos
+//   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
+//   connectString: 'votoelectronico_high' // Usar el alias del tnsnames.ora
+// };
 
 // Función para enviar correos con un retardo de 10 segundos
 function enviarCorreoConRetardo(transporter, mailOptions, delay) {
@@ -1033,16 +1068,16 @@ app.get('/api/resultados', async (req, res) => {
 app.get('/api/usuarios-crud', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
-    const result = await connection.execute(`SELECT ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, CONTRASENA_US FROM USUARIOS WHERE ESTADO_US = 1`);
+    const result = await connection.execute(
+      `SELECT ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, CONTRASENA_US 
+       FROM USUARIOS 
+       WHERE ESTADO_US = 1 
+       ORDER BY ID_US`,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
     await connection.close();
-    res.json(result.rows.map(row => ({
-      ID_US: row[0],
-      ID_ROL: row[1],
-      NOMBRE_US: row[2],
-      APELLIDO_US: row[3],
-      DEPARTAMENTO_US: row[4],
-      CONTRASENA_US: row[5]
-    })));
+    res.json(result.rows);
   } catch (err) {
     console.error('Error al obtener los usuarios:', err);
     res.status(500).json({ error: 'Error al obtener los usuarios' });
@@ -1519,6 +1554,227 @@ app.post('/obtener-nombres-usuarios', async (req, res) => {
       }
     }
   }
+});
+
+// Función para generar ID de usuario a partir del nombre
+function generarIdUsuario(nombre, apellido) {
+  // Convertir a minúsculas y remover acentos
+  const nombreNormalizado = nombre.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ñ/g, "n");
+  const apellidoNormalizado = apellido.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ñ/g, "n");
+
+  // Tomar primera letra del nombre y primera palabra del apellido
+  const inicialNombre = nombreNormalizado.split(' ')[0].charAt(0);
+  const inicialSegundoNombre = nombreNormalizado.split(' ')[1] ? nombreNormalizado.split(' ')[1].charAt(0) : '';
+  const primerApellido = apellidoNormalizado.split(' ')[0];
+
+  return (inicialNombre + inicialSegundoNombre + primerApellido).toLowerCase();
+}
+
+// Endpoint para la carga masiva de usuarios
+app.post('/api/usuarios-crud/upload', uploadDocumentos.single('file'), async (req, res) => {
+  let connection;
+  try {
+    connection = await oracledb.getConnection(dbConfig);
+    const file = req.file;
+    const fileContent = fs.readFileSync(file.path, 'utf-8');
+    const records = [];
+    const errors = [];
+
+    if (file.originalname.endsWith('.csv')) {
+      await new Promise((resolve, reject) => {
+        csv.parse(fileContent, {
+          columns: header => header.map(column => column.trim()),
+          skip_empty_lines: true,
+          relax_column_count: true,
+          trim: true,
+          on_record: (record, {lines}) => {
+            // Asegurarse de que todos los campos requeridos existan
+            if (!record.NOMBRE_US || !record.APELLIDO_US || !record.DEPARTAMENTO_US || !record.CONTRASENA_US) {
+              throw new Error(`Faltan campos requeridos en la línea ${lines}`);
+            }
+            // ID_ROL es opcional, si no existe no lo incluimos en el objeto
+            const cleanRecord = {
+              NOMBRE_US: record.NOMBRE_US,
+              APELLIDO_US: record.APELLIDO_US,
+              DEPARTAMENTO_US: record.DEPARTAMENTO_US,
+              CONTRASENA_US: record.CONTRASENA_US
+            };
+            // Solo añadir ID_ROL si existe en el registro
+            if (record.ID_ROL) {
+              cleanRecord.ID_ROL = record.ID_ROL.trim();
+            }
+            return cleanRecord;
+          }
+        })
+        .on('data', (data) => records.push(data))
+        .on('error', reject)
+        .on('end', resolve);
+      });
+    } else if (file.originalname.endsWith('.xlsx')) {
+      // Leer el archivo Excel correctamente como buffer
+      const buffer = fs.readFileSync(file.path);
+      const workbook = XLSX.read(buffer, { 
+        type: 'buffer',
+        codepage: 65001 // UTF-8
+      });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { 
+        raw: false,
+        defval: '', // Valor por defecto para celdas vacías
+        dateNF: 'yyyy-mm-dd'
+      });
+
+      // Procesar cada registro del Excel y normalizar caracteres especiales
+      jsonData.forEach((record, index) => {
+        if (!record.NOMBRE_US || !record.APELLIDO_US || !record.DEPARTAMENTO_US || !record.CONTRASENA_US) {
+          throw new Error(`Faltan campos requeridos en la fila ${index + 2}`);
+        }
+        
+        // Función para normalizar texto con caracteres especiales
+        const normalizeText = (text) => {
+          return text.toString()
+            .normalize('NFKC')  // Normalización de caracteres compuestos
+            .replace(/[\u0300-\u036f]/g, '') // Eliminar caracteres de control
+            .normalize('NFC');  // Recomponer caracteres
+        };
+        
+        const cleanRecord = {
+          NOMBRE_US: normalizeText(record.NOMBRE_US).trim(),
+          APELLIDO_US: normalizeText(record.APELLIDO_US).trim(),
+          DEPARTAMENTO_US: normalizeText(record.DEPARTAMENTO_US).trim(),
+          CONTRASENA_US: record.CONTRASENA_US.trim()
+        };
+        
+        if (record.ID_ROL) {
+          cleanRecord.ID_ROL = record.ID_ROL.toString().trim();
+        }
+        
+        records.push(cleanRecord);
+      });
+    }
+
+    for (const record of records) {
+      try {
+        // Generar ID_US usando la función existente
+        const id_us = generarIdUsuario(record.NOMBRE_US, record.APELLIDO_US);
+        
+        // Verificar si el ID ya existe y agregar número si es necesario
+        let counter = 1;
+        let finalId = id_us;
+        while (true) {
+          const exists = await connection.execute(
+            'SELECT COUNT(*) FROM USUARIOS WHERE ID_US = :id_us',
+            [finalId]
+          );
+
+          if (exists.rows[0][0] === 0) break;
+          finalId = `${id_us}${counter}`;
+          counter++;
+        }
+
+        // Generar correo electrónico
+        const email_us = `${finalId}@espe.edu.ec`;
+
+        // Usar '2' como valor por defecto para ID_ROL si no está presente
+        const id_rol = record.ID_ROL || '2';
+
+        // Validar que el ID_ROL exista
+        const rolExists = await connection.execute(
+          'SELECT COUNT(*) FROM ROL WHERE ID_ROL = :id_rol',
+          [id_rol]
+        );
+
+        if (rolExists.rows[0][0] === 0) {
+          throw new Error(`El rol "${id_rol}" no existe en la base de datos`);
+        }
+
+        // Insertar usuario con todos los campos requeridos
+        await connection.execute(
+          `INSERT INTO USUARIOS (
+            ID_US, 
+            ID_ROL, 
+            NOMBRE_US, 
+            APELLIDO_US, 
+            DEPARTAMENTO_US, 
+            CONTRASENA_US, 
+            ESTADO_US,
+            EMAIL_US
+          ) VALUES (
+            :id_us, 
+            :id_rol, 
+            :nombre_us, 
+            :apellido_us, 
+            :departamento_us, 
+            :contrasena_us, 
+            :estado_us,
+            :email_us
+          )`,
+          {
+            id_us: finalId,
+            id_rol: id_rol,
+            nombre_us: record.NOMBRE_US,
+            apellido_us: record.APELLIDO_US,
+            departamento_us: record.DEPARTAMENTO_US,
+            contrasena_us: record.CONTRASENA_US,
+            estado_us: 1,
+            email_us: email_us
+          }
+        );
+        await connection.commit();
+      } catch (err) {
+        console.error('Error al procesar registro:', err);
+        errors.push(`Error al crear usuario ${record.NOMBRE_US} ${record.APELLIDO_US}: ${err.message}`);
+      }
+    }
+
+    fs.unlinkSync(file.path);
+
+    if (errors.length > 0) {
+      res.status(400).json({
+        success: false,
+        message: 'Se encontraron errores al procesar algunos usuarios',
+        errors
+      });
+    } else {
+      res.json({
+        success: true,
+        message: 'Usuarios cargados exitosamente'
+      });
+    }
+  } catch (err) {
+    console.error('Error al procesar el archivo:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al procesar el archivo',
+      error: err.message
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error al cerrar la conexión:', err);
+      }
+    }
+  }
+});
+
+app.get('/usuarios_ejemplo.csv', (req, res) => {
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename=usuarios_ejemplo.csv');
+  res.sendFile(path.join(__dirname, 'usuarios_ejemplo.csv'));
+});
+
+app.get('/usuarios_ejemplo.xlsx', (req, res) => {
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename=usuarios_ejemplo.xlsx');
+  res.sendFile(path.join(__dirname, 'usuarios_ejemplo.xlsx'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {

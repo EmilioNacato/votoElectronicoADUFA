@@ -85,9 +85,50 @@
         <!-- Formulario para Añadir/Modificar Usuario -->
         <div class="row mb-4">
           <div class="col-md-8">
-            <button id="toggleFormButton" class="btn btn-primary" style="width: 200px;">Agregar usuario</button><br><br>
+            <button id="toggleFormButton" class="btn btn-primary" style="width: 200px;">Agregar usuario</button>
+            <button id="toggleUploadButton" class="btn btn-success" style="width: 200px; margin-left: 10px;">Carga masiva</button><br><br>
           </div>
           
+          <!-- Sección de carga masiva -->
+          <div id="divCargaMasiva" class="col-md-12" style="display: none;">
+            <h2 class="mb-4">Carga Masiva de Usuarios</h2>
+            <div class="alert alert-info">
+              <p><strong>Instrucciones:</strong></p>
+              <ul>
+                <li>El archivo debe estar en formato CSV o Excel (.xlsx)</li>
+                <li>Las columnas requeridas son:
+                  <ul>
+                    <li>NOMBRE_US (Nombres completos, ejemplo: "Emilio Julián")</li>
+                    <li>APELLIDO_US (Apellidos completos, ejemplo: "Ñacato Ortega")</li>
+                    <li>DEPARTAMENTO_US (Departamento al que pertenece)</li>
+                    <li>CONTRASENA_US (Contraseña para el usuario)</li>
+                    <li>ID_ROL (Opcional, por defecto será 2 - votante)</li>
+                  </ul>
+                </li>
+                <li>El archivo debe estar codificado en UTF-8 para manejar correctamente tildes y ñ</li>
+                <li>El sistema generará automáticamente:
+                  <ul>
+                    <li>ID_US: usando las iniciales del nombre y el primer apellido (ejemplo: "ejnacato" para "Emilio Julián Ñacato Ortega")</li>
+                    <li>Correo electrónico: ejnacato@espe.edu.ec</li>
+                    <li>Estado: activo (1)</li>
+                  </ul>
+                </li>
+                <li>Puede descargar archivos de ejemplo:
+                  <ul>
+                    <li><a href="/usuarios_ejemplo.csv" download>Descargar ejemplo CSV</a></li>
+                    <li><a href="/usuarios_ejemplo.xlsx" download>Descargar ejemplo Excel</a></li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+            <form id="uploadForm" enctype="multipart/form-data" accept-charset="UTF-8">
+              <div class="mb-3">
+                <label for="fileInput" class="form-label">Seleccione el archivo</label>
+                <input type="file" class="form-control" id="fileInput" accept=".csv,.xlsx" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Cargar Usuarios</button>
+            </form>
+          </div>
           
           <div id="divCreacionUsuario" class="col-md-12" style="display: none;">
             <h2 class="mb-4">Agregación de Usuarios</h2>
@@ -187,6 +228,16 @@
               <!-- Las filas de usuarios se llenarán aquí mediante JavaScript -->
             </tbody>
           </table>
+          <!-- Controles de paginación -->
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="text-muted">
+              Mostrando <span id="startIndex">0</span>-<span id="endIndex">0</span> de <span id="totalItems">0</span> usuarios
+            </div>
+            <div class="btn-group">
+              <button id="prevPage" class="btn btn-outline-primary">&laquo; Anterior</button>
+              <button id="nextPage" class="btn btn-outline-primary">Siguiente &raquo;</button>
+            </div>
+          </div>
         </div>
     </section>
   </main>
@@ -223,13 +274,76 @@
 
       const toggleButton = document.getElementById('toggleFormButton');
       const divCreacionUsuario = document.getElementById('divCreacionUsuario');
+      const toggleUploadButton = document.getElementById('toggleUploadButton');
+      const divCargaMasiva = document.getElementById('divCargaMasiva');
 
       toggleButton.addEventListener('click', () => {
+          divCargaMasiva.style.display = 'none';
           if (divCreacionUsuario.style.display === 'none') {
             divCreacionUsuario.style.display = 'block';
           } else {
             divCreacionUsuario.style.display = 'none';
           }
+      });
+
+      toggleUploadButton.addEventListener('click', () => {
+          divCreacionUsuario.style.display = 'none';
+          if (divCargaMasiva.style.display === 'none') {
+            divCargaMasiva.style.display = 'block';
+          } else {
+            divCargaMasiva.style.display = 'none';
+          }
+      });
+
+      // Manejar la carga masiva de usuarios
+      const uploadForm = document.getElementById('uploadForm');
+      uploadForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        if (!file) {
+          alert('Por favor seleccione un archivo');
+          return;
+        }
+
+        // Validar el tipo de archivo
+        const fileType = file.name.split('.').pop().toLowerCase();
+        if (fileType !== 'csv' && fileType !== 'xlsx') {
+          alert('Por favor seleccione un archivo CSV o Excel (.xlsx)');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const response = await fetch('/api/usuarios-crud/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          if (result.success) {
+            alert('Usuarios cargados exitosamente');
+            fetchUsuarios(); // Actualizar la tabla
+            uploadForm.reset();
+            divCargaMasiva.style.display = 'none';
+          } else {
+            let errorMessage = result.message || 'Error desconocido';
+            if (result.errors && result.errors.length > 0) {
+              errorMessage += '\n\nDetalles:\n' + result.errors.join('\n');
+            }
+            alert('Error al cargar usuarios: ' + errorMessage);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          alert('Error al procesar el archivo: ' + error.message);
+        }
       });
 
       const usuarioForm = document.getElementById('usuarioForm');
@@ -267,43 +381,79 @@
       });
     });
 
+    let currentPage = 1;
+    const itemsPerPage = 10;
+    let allUsers = [];
+    let filteredUsers = [];
+
     async function fetchUsuarios(searchTerm = '') {
       try {
         const response = await fetch('/api/usuarios-crud');
-        const usuarios = await response.json();
-        const usuariosTableBody = document.getElementById('usuariosTableBody');
-        usuariosTableBody.innerHTML = '';
-
-        // Filtrar usuarios por ID, nombre o apellido si searchTerm no es vacío
-        const usuariosFiltrados = usuarios.filter(usuario => 
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        allUsers = await response.json();
+        
+        // Filtrar usuarios
+        filteredUsers = allUsers.filter(usuario => 
           usuario.ID_US !== 'nulo' && (
-            usuario.ID_US.includes(searchTerm) ||
+            usuario.ID_US.toLowerCase().includes(searchTerm.toLowerCase()) ||
             usuario.NOMBRE_US.toLowerCase().includes(searchTerm.toLowerCase()) ||
             usuario.APELLIDO_US.toLowerCase().includes(searchTerm.toLowerCase())
           )
         );
 
-        // Mostrar los usuarios filtrados
-        usuariosFiltrados.forEach(usuario => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${usuario.ID_US}</td>
-            <td>${usuario.ID_ROL}</td>
-            <td>${usuario.NOMBRE_US}</td>
-            <td>${usuario.APELLIDO_US}</td>
-            <td>${usuario.DEPARTAMENTO_US}</td>
-            <td>${usuario.CONTRASENA_US}</td>
-            <td>
-              <button class="btn btn-info btn-sm btn-edit" data-id="${usuario.ID_US}">Editar</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${usuario.ID_US}')">Eliminar</button>
-            </td>
-          `;
-          usuariosTableBody.appendChild(row);
-        });
-      } catch (err) {
-        console.error('Error al obtener los usuarios:', err);
-        alert('Error al obtener los usuarios');
+        updatePagination();
+        displayUsers();
+      } catch (error) {
+        console.error('Error:', error);
       }
+    }
+
+    function updatePagination() {
+      const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, filteredUsers.length);
+
+      document.getElementById('startIndex').textContent = filteredUsers.length === 0 ? 0 : startIndex + 1;
+      document.getElementById('endIndex').textContent = endIndex;
+      document.getElementById('totalItems').textContent = filteredUsers.length;
+
+      document.getElementById('prevPage').disabled = currentPage === 1;
+      document.getElementById('nextPage').disabled = currentPage >= totalPages;
+    }
+
+    function displayUsers() {
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const usuariosTableBody = document.getElementById('usuariosTableBody');
+      usuariosTableBody.innerHTML = '';
+
+      const usersToDisplay = filteredUsers.slice(startIndex, endIndex);
+
+      usersToDisplay.forEach(usuario => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${escapeHtml(usuario.ID_US)}</td>
+          <td>${escapeHtml(usuario.ID_ROL)}</td>
+          <td>${escapeHtml(usuario.NOMBRE_US)}</td>
+          <td>${escapeHtml(usuario.APELLIDO_US)}</td>
+          <td>${escapeHtml(usuario.DEPARTAMENTO_US)}</td>
+          <td>${escapeHtml(usuario.CONTRASENA_US)}</td>
+          <td>
+            <button class="btn btn-info btn-sm btn-edit" data-id="${escapeHtml(usuario.ID_US)}">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${escapeHtml(usuario.ID_US)}')">Eliminar</button>
+          </td>
+        `;
+        usuariosTableBody.appendChild(row);
+      });
+    }
+
+    // Función para escapar caracteres HTML y prevenir XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     // Manejar la edición de usuarios
@@ -406,6 +556,24 @@
         // Redireccionar al index
         window.location.href = '/';
       });
+    });
+
+    // Event Listeners para paginación
+    document.getElementById('prevPage').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        updatePagination();
+        displayUsers();
+      }
+    });
+
+    document.getElementById('nextPage').addEventListener('click', () => {
+      const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+      if (currentPage < totalPages) {
+        currentPage++;
+        updatePagination();
+        displayUsers();
+      }
     });
   </script>  
   
