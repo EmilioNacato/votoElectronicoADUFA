@@ -150,18 +150,18 @@ const transporter = nodemailer.createTransport({
 
 
 // Configuración de la base de datos
-// const dbConfig = {
-//   user: 'C##emilioadmin',
-//   password: 'Emilio.*142002',
-//   connectString: 'localhost/XE'
-// };
+const dbConfig = {
+  user: 'C##emilioadmin',
+  password: 'Emilio.*142002',
+  connectString: 'localhost/XE'
+};
 
 // Configuración de la base de datos
-const dbConfig = {
-  user: 'ADMIN', // Usuario de la base de datos
-  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-  connectString: 'votoelectronico_high' // Usar el alias del tnsnames.ora
-};
+// const dbConfig = {
+//   user: 'ADMIN', // Usuario de la base de datos
+//   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
+//   connectString: 'votoelectronico_high' // Usar el alias del tnsnames.ora
+// };
 
 // Función para enviar correos con un retardo de 10 segundos
 function enviarCorreoConRetardo(transporter, mailOptions, delay) {
@@ -304,27 +304,30 @@ async function verificarFechaYHora(req, res, next) {
   try {
     connection = await oracledb.getConnection(dbConfig);
     
-    // Obtener la fecha y hora actual de Oracle en la zona horaria de US East (Ashburn)
-    const timeResult = await connection.execute(
-      `SELECT 
-        TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York', 'DD/MM/YYYY') as fecha_actual,
-        TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York', 'HH24:MI') as hora_actual
-       FROM DUAL`
-    );
+    // Obtener la fecha y hora actual del sistema local
+    const ahora = new Date();
+    // Ajustar al formato requerido
+    const fechaActual = ahora.toLocaleDateString('es-EC', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+    
+    const horaActual = ahora.toLocaleTimeString('es-EC', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
 
-    const fechaActual = timeResult.rows[0][0];
-    const horaActual = timeResult.rows[0][1];
-
-    console.log('Fecha actual Oracle (US East):', fechaActual);
-    console.log('Hora actual Oracle (US East):', horaActual);
+    console.log('Fecha actual Sistema:', fechaActual);
+    console.log('Hora actual Sistema:', horaActual);
 
     // Obtener configuración de votación
     const { periodo } = req.query;
     const configResult = await connection.execute(
-      `SELECT 
-        TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
-        HORA_INICIO,
-        HORA_FIN
+      `SELECT TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
+              HORA_INICIO,
+              HORA_FIN
        FROM CONFIGURACION_VOTACION 
        WHERE PERIODO_POSTULACION = :periodo`,
       [periodo]
@@ -342,6 +345,8 @@ async function verificarFechaYHora(req, res, next) {
     const horaFin = configResult.rows[0][2];
 
     console.log('Fecha votación:', fechaVotacion);
+    console.log('Fecha actual:', fechaActual);
+    console.log('Hora actual:', horaActual);
     console.log('Hora inicio:', horaInicio);
     console.log('Hora fin:', horaFin);
 
@@ -354,29 +359,15 @@ async function verificarFechaYHora(req, res, next) {
 
     // Convertir horas a minutos para comparación
     const [horaActualHH, horaActualMM] = horaActual.split(':').map(Number);
-    let minutosActuales = horaActualHH * 60 + horaActualMM;
+    const minutosActuales = horaActualHH * 60 + horaActualMM;
 
     const [horaInicioHH, horaInicioMM] = horaInicio.split(':').map(Number);
     const minutosInicio = horaInicioHH * 60 + horaInicioMM;
 
     const [horaFinHH, horaFinMM] = horaFin.split(':').map(Number);
-    let minutosFinVotacion = horaFinHH * 60 + horaFinMM;
+    const minutosFinVotacion = horaFinHH * 60 + horaFinMM;
 
-    // Si la hora de fin es menor que la hora de inicio, significa que es del día siguiente
-    if (minutosFinVotacion < minutosInicio) {
-        minutosFinVotacion += 24 * 60; // Agregar 24 horas en minutos
-        // Si la hora actual es menor que la hora de inicio, también debe ajustarse
-        if (minutosActuales < minutosInicio) {
-            minutosActuales += 24 * 60;
-        }
-    }
-
-    console.log('Fecha votación:', fechaVotacion);
-    console.log('Fecha actual:', fechaActual);
-    console.log('Hora actual:', horaActual);
-    console.log('Hora inicio:', horaInicio);
-    console.log('Hora fin:', horaFin);
-    console.log('Minutos actuales (ajustados):', minutosActuales);
+    console.log('Minutos actuales:', minutosActuales);
     console.log('Rango permitido:', minutosInicio, 'a', minutosFinVotacion);
 
     // Verificar si estamos en el día correcto
@@ -384,16 +375,11 @@ async function verificarFechaYHora(req, res, next) {
                  fechaActObj.getMonth() === fechaVotObj.getMonth() &&
                  fechaActObj.getDate() === fechaVotObj.getDate();
     
-    // Si la hora de fin es del día siguiente, también debemos permitir votar si es el día siguiente
-    const esDiaSiguiente = !esHoy && 
-                          fechaActObj.getTime() === fechaVotObj.getTime() + 24 * 60 * 60 * 1000 &&
-                          minutosActuales < minutosFinVotacion - 24 * 60;
-    
     const estaEnHorario = minutosActuales >= minutosInicio && minutosActuales <= minutosFinVotacion;
 
     await connection.close();
 
-    if (!esHoy && !esDiaSiguiente) {
+    if (!esHoy) {
       return res.json({ 
         puedeVotar: false, 
         mensaje: `La votación está programada para el ${fechaVotacion}.\nHorario de votación: ${horaInicio} a ${horaFin}.\n\nPor favor, ingrese nuevamente en la fecha y hora indicadas.` 
@@ -403,7 +389,7 @@ async function verificarFechaYHora(req, res, next) {
     if (!estaEnHorario) {
       return res.json({ 
         puedeVotar: false, 
-        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}${minutosFinVotacion > 24 * 60 ? ' del día siguiente' : ''}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
+        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
       });
     }
 
@@ -1145,61 +1131,30 @@ app.delete('/api/usuarios-crud/:id', async (req, res) => {
 });
 
 app.get('/api/resultados/departamento', async (req, res) => {
-  const { periodo } = req.query;
-  let connection;
+  const periodo = req.query.periodo;
 
   try {
-    connection = await oracledb.getConnection(dbConfig);
+    const connection = await oracledb.getConnection(dbConfig);
 
     const result = await connection.execute(
-      `SELECT 
-        u.DEPARTAMENTO_US as departamento,
-        COUNT(*) as total_votos,
-        v.ID_LISTA as id_lista,
-        l.NOMBRE_LISTA as nombre_lista
-       FROM VOTOS v
-       JOIN USUARIOS u ON v.ID_US = u.ID_US
-       JOIN LISTAS l ON v.ID_LISTA = l.ID_LISTA AND v.PERIODO_POSTULACION = l.PERIODO_POSTULACION
-       WHERE v.PERIODO_POSTULACION = :periodo
-       GROUP BY u.DEPARTAMENTO_US, v.ID_LISTA, l.NOMBRE_LISTA
-       ORDER BY u.DEPARTAMENTO_US, v.ID_LISTA`,
-      [periodo],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      `SELECT U.DEPARTAMENTO_US AS nombre, COUNT(V.ID_US) AS votos
+       FROM VOTOS V
+       JOIN USUARIOS U ON V.ID_US = U.ID_US
+       WHERE V.PERIODO_POSTULACION = :periodo
+       GROUP BY U.DEPARTAMENTO_US`,
+      [periodo]
     );
 
-    // Agrupar los resultados por departamento
-    const votosPorDepartamento = result.rows.reduce((acc, row) => {
-      const departamento = row.DEPARTAMENTO;
-      if (!acc[departamento]) {
-        acc[departamento] = {
-          nombre: departamento,
-          votos: 0,
-          detalles: []
-        };
-      }
-      acc[departamento].votos += row.TOTAL_VOTOS;
-      acc[departamento].detalles.push({
-        lista: `${row.ID_LISTA} - ${row.NOMBRE_LISTA}`,
-        votos: row.TOTAL_VOTOS
-      });
-      return acc;
-    }, {});
+    const data = result.rows.map(row => ({
+      nombre: row[0],
+      votos: row[1]
+    }));
 
-    // Convertir a array para la respuesta
-    const resultado = Object.values(votosPorDepartamento);
-    res.json(resultado);
-
-  } catch (error) {
-    console.error('Error al obtener resultados por departamento:', error);
-    res.status(500).json({ error: 'Error al obtener los resultados por departamento' });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error('Error al cerrar la conexión:', err);
-      }
-    }
+    res.json(data);
+    await connection.close();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error en el servidor');
   }
 });
 
@@ -1319,55 +1274,108 @@ app.get('/api/resultados', async (req, res) => {
 
 // Agregar nueva ruta para obtener resultados desde blockchain
 app.get('/api/resultados/blockchain', async (req, res) => {
+  const periodo = req.query.periodo;
+  const filterType = req.query.filterType || 'lista';
+  console.log(`Consultando votos por ${filterType} para periodo: ${periodo}`);
+
   try {
-    const { periodo } = req.query;
-    console.log('Consultando votos por lista para periodo:', periodo);
-
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
-    
-    const blockchainResponse = await axios.post(
-      'https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions',
-      {
-        chaincode: "data_synchronization_votos_v9",
-        args: ["getVotesByRange", "", "z"],
-        timeout: 18000,
-        sync: true
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${credentials}`
-        }
+    const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
+      chaincode: "data_synchronization_votos_v8",
+      args: [
+        "getVotesByRange",
+        "",
+        "z"
+      ],
+      timeout: 18000,
+      sync: true
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${credentials}`
       }
-    );
+    });
 
-    if (blockchainResponse.data.returnCode === 'Success') {
-      const votos = blockchainResponse.data.result.payload;
-      // Filtrar votos por periodo y agrupar por lista
-      const votosPorLista = votos
-        .filter(voto => voto.periodoPostulacion === periodo)
-        .reduce((acc, voto) => {
-          const nombreLista = voto.nombreLista;
-          if (!acc[nombreLista]) {
-            acc[nombreLista] = {
-              nombre: nombreLista,
-              votos: 0
-            };
-          }
-          acc[nombreLista].votos++;
-          return acc;
-        }, {});
-
-      // Convertir a array para la respuesta
-      const resultado = Object.values(votosPorLista);
-      res.json(resultado);
-    } else {
-      throw new Error(blockchainResponse.data.error || 'Error desconocido en la blockchain');
+    if (blockchainResponse.data.returnCode !== 'Success') {
+      throw new Error(blockchainResponse.data.error || 'Error al obtener datos de blockchain');
     }
-  } catch (error) {
-    console.error('Error al obtener resultados de blockchain:', error);
-    console.error('Detalles del error:', error.response?.data);
-    res.status(500).json({ error: 'Error al obtener resultados de la blockchain' });
+
+    const votosBlockchain = blockchainResponse.data.result.payload;
+    const votosPeriodo = votosBlockchain.filter(voto => voto.periodoPostulacion === periodo);
+    
+    let resultados;
+    
+    if (filterType === 'lista') {
+      // Agrupar votos por lista
+      resultados = votosPeriodo.reduce((acc, voto) => {
+        const idLista = voto.idLista;
+        acc[idLista] = (acc[idLista] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Convertir a formato esperado por el frontend
+      const resultadosFormateados = Object.entries(resultados).map(([idLista, votos]) => ({
+        nombre: idLista,
+        votos: votos
+      }));
+
+      // Agregar voto nulo si existe
+      if (resultados['NULO']) {
+        resultadosFormateados.push({
+          nombre: 'NULO',
+          votos: resultados['NULO']
+        });
+      }
+
+      // Identificar lista ganadora
+      if (resultadosFormateados.length > 0) {
+        const ganadora = resultadosFormateados.reduce((max, lista) => 
+          lista.votos > max.votos ? lista : max
+        );
+        console.log(`Lista ganadora: ${ganadora.nombre} con ${ganadora.votos} votos`);
+      }
+
+      res.json(resultadosFormateados);
+
+    } else if (filterType === 'departamento') {
+      // Necesitamos obtener el departamento de cada usuario que votó
+      const connection = await oracledb.getConnection(dbConfig);
+      
+      try {
+        const departamentos = {};
+        
+        for (const voto of votosPeriodo) {
+          const userResult = await connection.execute(
+            `SELECT DEPARTAMENTO_US FROM USUARIOS WHERE ID_US = :idUs AND ESTADO_US = '1'`,
+            [voto.idUs]
+          );
+          
+          if (userResult.rows.length > 0) {
+            const departamento = userResult.rows[0][0];
+            departamentos[departamento] = (departamentos[departamento] || 0) + 1;
+          }
+        }
+
+        const resultadosFormateados = Object.entries(departamentos).map(([departamento, votos]) => ({
+          nombre: departamento,
+          votos: votos
+        }));
+
+        res.json(resultadosFormateados);
+      } finally {
+        await connection.close();
+      }
+    }
+
+  } catch (err) {
+    console.error('Error al obtener resultados de blockchain:', err);
+    if (err.response && err.response.data) {
+      console.error('Detalles del error:', err.response.data);
+    }
+    res.status(500).json({
+      message: 'Error al obtener los resultados de blockchain',
+      error: err.response?.data || err.message
+    });
   }
 });
 
@@ -1377,26 +1385,29 @@ app.get('/verificar-horario', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     
-    // Obtener la fecha y hora actual de Oracle en la zona horaria de US East (Ashburn)
-    const timeResult = await connection.execute(
-      `SELECT 
-        TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York', 'DD/MM/YYYY') as fecha_actual,
-        TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York', 'HH24:MI') as hora_actual
-       FROM DUAL`
-    );
+    // Obtener la fecha y hora actual del sistema local
+    const ahora = new Date();
+    // Ajustar al formato requerido
+    const fechaActual = ahora.toLocaleDateString('es-EC', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+    
+    const horaActual = ahora.toLocaleTimeString('es-EC', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
 
-    const fechaActual = timeResult.rows[0][0];
-    const horaActual = timeResult.rows[0][1];
-
-    console.log('Fecha actual Oracle (US East):', fechaActual);
-    console.log('Hora actual Oracle (US East):', horaActual);
+    console.log('Fecha actual Sistema:', fechaActual);
+    console.log('Hora actual Sistema:', horaActual);
 
     // Obtener configuración de votación
     const configResult = await connection.execute(
-      `SELECT 
-        TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
-        HORA_INICIO,
-        HORA_FIN
+      `SELECT TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
+              HORA_INICIO,
+              HORA_FIN
        FROM CONFIGURACION_VOTACION 
        WHERE PERIODO_POSTULACION = :periodo`,
       [periodo]
@@ -1422,29 +1433,20 @@ app.get('/verificar-horario', async (req, res) => {
 
     // Convertir horas a minutos para comparación
     const [horaActualHH, horaActualMM] = horaActual.split(':').map(Number);
-    let minutosActuales = horaActualHH * 60 + horaActualMM;
+    const minutosActuales = horaActualHH * 60 + horaActualMM;
 
     const [horaInicioHH, horaInicioMM] = horaInicio.split(':').map(Number);
     const minutosInicio = horaInicioHH * 60 + horaInicioMM;
 
     const [horaFinHH, horaFinMM] = horaFin.split(':').map(Number);
-    let minutosFinVotacion = horaFinHH * 60 + horaFinMM;
-
-    // Si la hora de fin es menor que la hora de inicio, significa que es del día siguiente
-    if (minutosFinVotacion < minutosInicio) {
-        minutosFinVotacion += 24 * 60; // Agregar 24 horas en minutos
-        // Si la hora actual es menor que la hora de inicio, también debe ajustarse
-        if (minutosActuales < minutosInicio) {
-            minutosActuales += 24 * 60;
-        }
-    }
+    const minutosFinVotacion = horaFinHH * 60 + horaFinMM;
 
     console.log('Fecha votación:', fechaVotacion);
     console.log('Fecha actual:', fechaActual);
     console.log('Hora actual:', horaActual);
     console.log('Hora inicio:', horaInicio);
     console.log('Hora fin:', horaFin);
-    console.log('Minutos actuales (ajustados):', minutosActuales);
+    console.log('Minutos actuales:', minutosActuales);
     console.log('Rango permitido:', minutosInicio, 'a', minutosFinVotacion);
 
     // Verificar si estamos en el día correcto
@@ -1452,16 +1454,11 @@ app.get('/verificar-horario', async (req, res) => {
                  fechaActObj.getMonth() === fechaVotObj.getMonth() &&
                  fechaActObj.getDate() === fechaVotObj.getDate();
     
-    // Si la hora de fin es del día siguiente, también debemos permitir votar si es el día siguiente
-    const esDiaSiguiente = !esHoy && 
-                          fechaActObj.getTime() === fechaVotObj.getTime() + 24 * 60 * 60 * 1000 &&
-                          minutosActuales < minutosFinVotacion - 24 * 60;
-    
     const estaEnHorario = minutosActuales >= minutosInicio && minutosActuales <= minutosFinVotacion;
 
     await connection.close();
 
-    if (!esHoy && !esDiaSiguiente) {
+    if (!esHoy) {
       return res.json({ 
         puedeVotar: false, 
         mensaje: `La votación está programada para el ${fechaVotacion}.\nHorario de votación: ${horaInicio} a ${horaFin}.\n\nPor favor, ingrese nuevamente en la fecha y hora indicadas.` 
@@ -1471,7 +1468,7 @@ app.get('/verificar-horario', async (req, res) => {
     if (!estaEnHorario) {
       return res.json({ 
         puedeVotar: false, 
-        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}${minutosFinVotacion > 24 * 60 ? ' del día siguiente' : ''}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
+        mensaje: `El horario de votación es de ${horaInicio} a ${horaFin}.\nPor favor, ingrese nuevamente dentro del horario establecido.` 
       });
     }
 
