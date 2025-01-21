@@ -229,7 +229,7 @@
 
               // Verificar si los votos nulos superan a la lista ganadora
               if (listaNulo && listaNulo.votos > maxVotos) {
-                html += `<p style="color: red; text-align: center; font-weight: bold;">
+                html += `<p style="color: red; text-align: center; font-weight: bold; font-size: 16px;">
                   ATENCIÓN: De acuerdo a los resultados obtenidos, se registra un total de ${listaNulo.votos} votos nulos (${listaNulo.porcentaje}%), 
                   superando a la lista con mayor votación ${listasGanadoras[0].nombre} que obtuvo ${maxVotos} votos (${listasGanadoras[0].porcentaje}%).<br><br>
                   En conformidad con el reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
@@ -238,7 +238,7 @@
                 // Caso de empate
                 const listasPorcentaje = listasGanadoras[0].porcentaje;
                 const nombresListas = listasGanadoras.map(lista => lista.nombre).join(' y ');
-                html += `<p style="text-align: center; font-weight: bold;">
+                html += `<p style="color: red; text-align: center; font-weight: bold; font-size: 16px;">
                   ATENCIÓN: Se ha registrado un empate técnico entre las listas ${nombresListas}, 
                   cada una con ${maxVotos} votos, representando un ${listasPorcentaje}% del total de votos emitidos.<br><br>
                   De acuerdo al reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
