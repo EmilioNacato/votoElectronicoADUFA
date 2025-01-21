@@ -279,12 +279,16 @@
             <hr>
             <br>
             <div class="radio-tile-group">
-              <div class="form-check-inline col-md-1"></div>
-              <div class="form-check-inline col-md-10">
+              
+              <div class="form-check-inline col-md-4">
                 <input class="radio-button-nulo" type="radio" id="nulo" name="lista" value="nulo" data-nombre-lista="nulo">
                 <label class="btn-nulo" for="nulo"> VOTAR NULO</label>
               </div>
-              <div class="form-check-inline col-md-1"></div>`;
+              <div class="form-check-inline col-md-4">
+                <input class="radio-button-nulo" type="radio" id="blanco" name="lista" value="blanco" data-nombre-lista="blanco">
+                <label class="btn-nulo" for="blanco"> VOTAR BLANCO</label>
+              </div>
+              `;
 
           Object.keys(listas).forEach((listaId, index) => {
             const lista = listas[listaId];

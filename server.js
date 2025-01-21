@@ -781,7 +781,7 @@ app.post('/guardar-votos', async (req, res) => {
     }
 
     // Inserción del voto en la tabla VOTOS
-    const insertQuery = `
+     const insertQuery = `
       INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
       VALUES (:idLista, :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
 
