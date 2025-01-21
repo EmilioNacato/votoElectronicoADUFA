@@ -70,9 +70,9 @@ const upload = multer({
 
 app.post('/uploadProvisionales', upload.any(), async (req, res) => {
   try {
-    console.log('Archivos recibidos:', req.files);
+  console.log('Archivos recibidos:', req.files);
 
-    if (!req.files || req.files.length === 0) {
+  if (!req.files || req.files.length === 0) {
       console.error('No se subieron archivos');
       return res.status(400).json({ 
         success: false, 
@@ -113,9 +113,9 @@ app.post('/uploadProvisionales', upload.any(), async (req, res) => {
       } catch (err) {
         console.error(`Error al procesar la imagen ${file.originalname}:`, err);
       }
-    }
+  }
 
-    // Si todo está bien, envía una respuesta de éxito
+  // Si todo está bien, envía una respuesta de éxito
     res.status(200).json({ 
       success: true, 
       message: 'Imágenes procesadas y guardadas correctamente.' 
@@ -627,10 +627,10 @@ app.post('/guardar-candidatos', async (req, res) => {
                 dignidad: dignidad
               }
             );
-          }
         }
+      }
 
-        // Insertar vocales principales
+      // Insertar vocales principales
         for (let i = 0; i < lista.vocalesPrincipales.length; i++) {
           const id_us = lista.vocalesPrincipales[i];
           if (id_us) {
@@ -650,19 +650,19 @@ app.post('/guardar-candidatos', async (req, res) => {
                 `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
                  VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
                 {
-                  id_us: id_us,
-                  id_lista: id_lista,
+                id_us: id_us,
+                id_lista: id_lista,
                   periodo: periodo,
                   dignidad: `vocalPrincipal${i + 1}`
                 }
               );
-            } else {
+          } else {
               console.log(`El candidato ${id_us} ya existe en esta lista y periodo`);
-            }
           }
         }
+      }
 
-        // Insertar vocales suplentes
+      // Insertar vocales suplentes
         for (let i = 0; i < lista.vocalesSuplentes.length; i++) {
           const id_us = lista.vocalesSuplentes[i];
           if (id_us) {
@@ -682,16 +682,16 @@ app.post('/guardar-candidatos', async (req, res) => {
                 `INSERT INTO CANDIDATOS (ID_US, ID_LISTA, PERIODO_POSTULACION, DIGNIDAD_CAND, ESTADO_CAND)
                  VALUES (:id_us, :id_lista, :periodo, :dignidad, 1)`,
                 {
-                  id_us: id_us,
-                  id_lista: id_lista,
+                id_us: id_us,
+                id_lista: id_lista,
                   periodo: periodo,
                   dignidad: `vocalSuplente${i + 1}`
                 }
               );
-            } else {
+          } else {
               console.log(`El candidato ${id_us} ya existe en esta lista y periodo`);
-            }
           }
+        }
         }
       } else {
         console.log(`La lista ${id_lista} ya existe para este periodo`);
@@ -783,7 +783,7 @@ app.post('/guardar-votos', async (req, res) => {
     // Inserción del voto en la tabla VOTOS
      const insertQuery = `
       INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
-      VALUES (:idLista, :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
+                         VALUES (:idLista, :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
 
     await connection.execute(insertQuery, [id_lista, period, usuario, aceptaAuditoria]);
 
@@ -879,9 +879,9 @@ app.get('/obtener-candidatos', async (req, res) => {
 
   try {
     connection = await oracledb.getConnection(dbConfig);
-    
+
     const result = await connection.execute(
-      `SELECT 
+      `SELECT
         c.ID_LISTA as idLista,
         c.DIGNIDAD_CAND as dignidadCand,
         u.NOMBRE_US || ' ' || u.APELLIDO_US as nombreCompleto,
@@ -1315,23 +1315,23 @@ app.get('/api/resultados/blockchain', async (req, res) => {
       // Agrupar votos por lista
       resultados = votosPeriodo.reduce((acc, voto) => {
         const idLista = voto.idLista;
-        acc[idLista] = (acc[idLista] || 0) + 1;
+        const nombreLista = voto.nombreLista;
+        const key = idLista === 'blanco' ? 'BLANCO' : 
+                   idLista === 'nulo' ? 'NULO' : 
+                   `${idLista} - ${nombreLista}`;
+        acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
 
-      // Convertir a formato esperado por el frontend
-      const resultadosFormateados = Object.entries(resultados).map(([idLista, votos]) => ({
-        nombre: idLista,
-        votos: votos
-      }));
+      // Calcular total de votos para porcentajes
+      const totalVotos = Object.values(resultados).reduce((sum, count) => sum + count, 0);
 
-      // Agregar voto nulo si existe
-      if (resultados['NULO']) {
-        resultadosFormateados.push({
-          nombre: 'NULO',
-          votos: resultados['NULO']
-        });
-      }
+      // Convertir a formato esperado por el frontend
+      const resultadosFormateados = Object.entries(resultados).map(([nombre, votos]) => ({
+        nombre,
+        votos,
+        porcentaje: ((votos / totalVotos) * 100).toFixed(2)
+      }));
 
       console.log('Resultados formateados:', resultadosFormateados);
       res.json(resultadosFormateados);
