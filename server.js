@@ -1343,39 +1343,23 @@ app.get('/api/resultados/blockchain', async (req, res) => {
 
     if (blockchainResponse.data.returnCode === 'Success') {
       const votos = blockchainResponse.data.result.payload;
-      let totalVotos = 0;
-      
       // Filtrar votos por periodo y agrupar por lista
       const votosPorLista = votos
         .filter(voto => voto.periodoPostulacion === periodo)
         .reduce((acc, voto) => {
-          const idLista = voto.idLista;
-          if (!acc[idLista]) {
-            acc[idLista] = {
-              nombre: `${idLista} - ${voto.nombreLista}`,
+          const nombreLista = voto.nombreLista;
+          if (!acc[nombreLista]) {
+            acc[nombreLista] = {
+              nombre: nombreLista,
               votos: 0
             };
           }
-          acc[idLista].votos++;
-          totalVotos++;
+          acc[nombreLista].votos++;
           return acc;
         }, {});
 
-      // Convertir a array y calcular porcentajes
-      const resultado = Object.entries(votosPorLista)
-        .map(([idLista, data]) => ({
-          ...data,
-          porcentaje: totalVotos > 0 ? ((data.votos / totalVotos) * 100).toFixed(2) : 0
-        }))
-        // Ordenar: primero listas normales, luego nulos, finalmente blancos
-        .sort((a, b) => {
-          if (a.nombre.startsWith('nulo')) return 1;
-          if (b.nombre.startsWith('nulo')) return -1;
-          if (a.nombre.startsWith('blanco')) return 1;
-          if (b.nombre.startsWith('blanco')) return -1;
-          return a.nombre.localeCompare(b.nombre);
-        });
-
+      // Convertir a array para la respuesta
+      const resultado = Object.values(votosPorLista);
       res.json(resultado);
     } else {
       throw new Error(blockchainResponse.data.error || 'Error desconocido en la blockchain');
