@@ -27,163 +27,6 @@
 
   <!-- Main CSS File -->
   <link href="../assets/css/main.css" rel="stylesheet">
-
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const rol = localStorage.getItem('rol');
-      // if (!rol || rol !== '1') {
-      //   window.location.href = '/';
-      // }
-
-      // function preventBack() {
-      //   window.history.forward();
-      // }
-
-      // setTimeout(preventBack, 0);
-
-      // window.onunload = function() {
-      //   null;
-      // };
-
-      // window.addEventListener('popstate', function(event) {
-      //   history.pushState(null, "", location.href);
-      // });
-
-      // Obtener usuarios y llenar los campos de selección
-      fetch('/api/usuarios')
-        .then(response => response.json())
-        .then(data => {
-          console.log(data); // Depuración: muestra los datos en consola
-          const userSelects = document.querySelectorAll('.user-select');
-          userSelects.forEach(select => {
-            data.forEach(user => {
-              const option = document.createElement('option');
-              option.value = `${user.nombres} ${user.apellidos}`;
-              option.text = `${user.nombres} ${user.apellidos}`;
-              select.appendChild(option);
-            });
-          });
-        })
-        .catch(err => console.error('Error al obtener los usuarios:', err));
-    });
-
-    document.getElementById('initialForm').addEventListener('submit', function(event) {
-      event.preventDefault();
-
-      const periodo = document.getElementById('periodo').value;
-      const numListas = parseInt(document.getElementById('numListas').value);
-      const fechaPublicacion = document.getElementById('fechaPublicacion').value;
-      console.log("initial submit");
-
-      let secondFormHtml = `
-        <p style="color: rgba(255, 255, 255, 0.8); text-align: center; font-size: 12px;">En este apartado se ingresarán cada uno de los candidatos postulados, separados por dignidades para su correcta selección.</p>
-        <h4 style="color: aliceblue;">Periodo ${periodo}</h4><form id="secondForm">
-        <br><div style="background-color: white; width: 760px; margin-left: -20px;">
-          <div style="background-color: rgba(0, 0, 0, 0.1); width: 760px; height: 15px;"></div>
-        </div>`;
-
-      for (let lista = 1; lista <= numListas; lista++) {
-        secondFormHtml += `<h4 style="color: var(--accent-color); padding-top: 15px;">Lista ${lista}</h4><hr>`;
-        console.log("initial lista");
-
-        const dignidades = ['Presidente', 'Vicepresidente', 'Secretario', 'Tesorero', 'Síndico'];
-        dignidades.forEach(dignidad => {
-          secondFormHtml += `
-            <div class="form-group row my-2">
-              <label class="col-sm-4 col-form-label">${dignidad}</label>
-              <div class="col-sm-8">
-                <select name="${dignidad.toLowerCase()}${lista}" class="form-control user-select" required>
-                  <option value="" disabled selected>Seleccione un ${dignidad.toLowerCase()}</option>
-                </select>
-              </div>
-            </div>`;
-        });
-
-        for (let i = 1; i <= 3; i++) {
-          secondFormHtml += `
-            <div class="form-group row my-2">
-              <label class="col-sm-4 col-form-label">Vocal Principal ${i}</label>
-              <div class="col-sm-8">
-                <select name="vocalPrincipal${i}Lista${lista}" class="form-control user-select" required>
-                  <option value="" disabled selected>Seleccione un vocal principal</option>
-                </select>
-              </div>
-            </div>`;
-        }
-
-        for (let i = 1; i <= 3; i++) {
-          secondFormHtml += `
-            <div class="form-group row my-2">
-              <label class="col-sm-4 col-form-label">Vocal Suplente ${i}</label>
-              <div class="col-sm-8">
-                <select name="vocalSuplente${i}Lista${lista}" class="form-control user-select" required>
-                  <option value="" disabled selected>Seleccione un vocal suplente</option>
-                </select>
-              </div>
-            </div>`;
-        }
-
-        secondFormHtml += `<br><div style="background-color: white; width: 760px; margin-left: -20px;">
-          <div style="background-color: rgba(0, 0, 0, 0.1); width: 760px; height: 15px;"></div>
-        </div>`;
-      }
-
-      secondFormHtml += `<br>
-        <div class="form-group row my-2">
-          <div class="col-sm-12 text-center">
-            <button type="submit" class="read-more" id="submitButton">Enviar</button>
-            <button type="button" class="read-more" id="backButton">Regresar</button>
-          </div>
-        </div>
-      </form>`;
-
-      document.getElementById('secondFormContainer').innerHTML = secondFormHtml;
-
-      document.getElementById('initialForm').style.display = 'none';
-      document.getElementById('secondFormContainer').style.display = 'block';
-
-      document.getElementById('backButton').addEventListener('click', function() {
-        document.getElementById('secondFormContainer').style.display = 'none';
-        document.getElementById('initialForm').style.display = 'block';
-      });
-
-
-      // document.getElementById('secondForm').addEventListener('submit', function(event) {
-      //   event.preventDefault();
-
-      //   const formData = new FormData(this);
-      //   formData.append('periodo', periodo);
-
-      //   const formDataObj = {};
-      //   formData.forEach((value, key) => {
-      //     formDataObj[key] = value;
-      //   });
-
-      //   localStorage.setItem('formData', JSON.stringify(formDataObj));
-
-      //   window.location.href = '/html/votacion.html';
-      // });
-
-      // Obtener usuarios y llenar los campos de selección nuevamente
-      fetch('/api/usuarios')
-        .then(response => response.json())
-        .then(data => {
-          console.log(data); // Depuración: muestra los datos en consola
-          const userSelects = document.querySelectorAll('.user-select');
-          userSelects.forEach(select => {
-            data.forEach(user => {
-              const option = document.createElement('option');
-              option.value = `${user.nombres} ${user.apellidos}`;
-              option.text = `${user.nombres} ${user.apellidos}`;
-              select.appendChild(option);
-            });
-          });
-        })
-        .catch(err => console.error('Error al obtener los usuarios:', err));
-    });
-
-    
-  </script>
 </head>
 
 <body class="index-page">
@@ -328,23 +171,6 @@
         localStorage.removeItem('usuario');
         window.location.href = '/';
       });
-
-      // Obtener usuarios y llenar los campos de selección
-      fetch('/api/usuarios')
-        .then(response => response.json())
-        .then(data => {
-          console.log(data); // Depuración: muestra los datos en consola
-          const userSelects = document.querySelectorAll('.user-select');
-          userSelects.forEach(select => {
-            data.forEach(user => {
-              const option = document.createElement('option');
-              option.value = `${user.nombres} ${user.apellidos}`;
-              option.text = `${user.nombres} ${user.apellidos}`;
-              select.appendChild(option);
-            });
-          });
-        })
-        .catch(err => console.error('Error al obtener los usuarios:', err));
     });
 
     document.getElementById('initialForm').addEventListener('submit', function(event) {
@@ -602,19 +428,67 @@
       }
 
       // Obtener usuarios y llenar los campos de selección nuevamente
+      let todosLosUsuarios = []; // Variable para almacenar todos los usuarios
+      let usuariosDisponibles = []; // Variable para almacenar usuarios disponibles
+
       fetch('/api/usuarios')
         .then(response => response.json())
         .then(data => {
-          console.log(data); // Depuración: muestra los datos en consola
-          const userSelects = document.querySelectorAll('.user-select');
-          userSelects.forEach(select => {
-            data.forEach(user => {
-              const option = document.createElement('option');
-              option.value = `${user.id}`;  // Aquí asignas el ID del usuario al value
-              option.text = `${user.nombres} ${user.apellidos}`;
-              select.appendChild(option);
+          console.log('Datos de usuarios recibidos:', data);
+          todosLosUsuarios = data;
+          usuariosDisponibles = [...data]; // Copia inicial de todos los usuarios
+          
+          // Función para actualizar los selectores con usuarios disponibles
+          function actualizarSelectores(selectorActual = null) {
+            const userSelects = document.querySelectorAll('.user-select');
+            
+            userSelects.forEach(select => {
+              // Guardar el valor seleccionado actual
+              const valorActual = select.value;
+              
+              // Limpiar opciones existentes, manteniendo solo la opción por defecto
+              while (select.options.length > 1) {
+                select.remove(1);
+              }
+              
+              // Agregar usuarios disponibles
+              usuariosDisponibles.forEach(user => {
+                // Si es el selector actual o el usuario está disponible
+                if (select === selectorActual || !estaSeleccionado(user.id)) {
+                  const option = document.createElement('option');
+                  option.value = `${user.id}`;
+                  option.text = `${user.nombres} ${user.apellidos}`;
+                  select.appendChild(option);
+                }
+              });
+              
+              // Restaurar el valor seleccionado si aún está disponible
+              if (valorActual && (select === selectorActual || !estaSeleccionado(valorActual))) {
+                select.value = valorActual;
+              }
             });
+          }
+          
+          // Función para verificar si un usuario ya está seleccionado
+          function estaSeleccionado(userId) {
+            const userSelects = document.querySelectorAll('.user-select');
+            for (const select of userSelects) {
+              if (select.value === userId) {
+                return true;
+              }
+            }
+            return false;
+          }
+          
+          // Agregar event listeners a todos los selectores
+          document.addEventListener('change', function(event) {
+            if (event.target.classList.contains('user-select')) {
+              actualizarSelectores(event.target);
+            }
           });
+          
+          // Inicializar los selectores
+          actualizarSelectores();
         })
         .catch(err => console.error('Error al obtener los usuarios:', err));
     });
