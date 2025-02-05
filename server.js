@@ -61,6 +61,12 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
+function hashUsuario(usuario) {
+  return crypto.createHash('sha256')
+    .update(usuario)
+    .digest('hex');
+}
+
 const upload = multer({
   storage: storage,
   limits: {
@@ -765,9 +771,10 @@ app.post('/guardar-votos', async (req, res) => {
     const id_lista = formData.idLista;
     const nombreLista = formData.nombreLista;
     const aceptaAuditoria = formData.aceptaAuditoria ? 1 : 0;
+    const usuarioHash = hashUsuario(usuario);
 
     // Construir el idVoto en el formato requerido
-    const idVoto = `${id_lista}_${period}_${usuario}`;
+    const idVoto = `${id_lista}_${period}_${usuarioHash}`;
 
     connection = await oracledb.getConnection(dbConfig);
 
@@ -801,10 +808,10 @@ app.post('/guardar-votos', async (req, res) => {
       const checkVotoQuery = `
         SELECT COUNT(*) 
         FROM VOTOS 
-        WHERE ID_US = :usuario 
+        WHERE ID_US = :usuarioHash 
         AND PERIODO_POSTULACION = :periodo`;
-      
-      const votoResult = await connection.execute(checkVotoQuery, [usuario, period]);
+
+      const votoResult = await connection.execute(checkVotoQuery, [usuarioHash, period]);
       
       if (votoResult.rows[0][0] > 0) {
         throw new Error('El usuario ya ha votado en este periodo');
@@ -812,14 +819,25 @@ app.post('/guardar-votos', async (req, res) => {
     }
 
     // Inserción del voto en la tabla VOTOS
-     const insertQuery = `
+    const insertQuery = `
       INSERT INTO VOTOS (ID_LISTA, PERIODO_POSTULACION, ID_US, FECHA_VOTACION, ACEPTA_AUDITORIA)
                          VALUES (:idLista, :periodoPostulacion, :usuario, CURRENT_TIMESTAMP, :aceptaAuditoria)`;
 
-    await connection.execute(insertQuery, [id_lista, period, usuario, aceptaAuditoria]);
+    await connection.execute(insertQuery, [id_lista, period, usuarioHash, aceptaAuditoria]);
+
+    console.log('=== Datos a guardar en la base de datos ===');
+    console.log('ID Usuario:', usuario);
+    console.log('ID Usuario Hash:', usuarioHash);
+    console.log('Periodo:', period);
+    console.log('ID Lista:', id_lista);
+    console.log('Nombre Lista:', nombreLista);
+    console.log('Acepta Auditoría:', aceptaAuditoria);
+    console.log('ID Voto generado:', idVoto);
+    console.log('Fecha y hora del voto:', new Date().toISOString());
+    console.log('=====================================');
 
     // Llamada a la Blockchain platform de OCI
-    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
+    /* const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v9",
       args: [
@@ -843,12 +861,12 @@ app.post('/guardar-votos', async (req, res) => {
       }
     });
 
-    console.log('Blockchain response:', blockchainResponse.data);
+    console.log('Blockchain response:', blockchainResponse.data); */
 
     await connection.commit();
 
     // Enviar correo de confirmación
-    const emailQuery = `SELECT EMAIL_US FROM USUARIOS WHERE ID_US = :usuario`;
+    /* const emailQuery = `SELECT EMAIL_US FROM USUARIOS WHERE ID_US = :usuario`;
     const emailResult = await connection.execute(emailQuery, [usuario]);
     const emailUsuario = emailResult.rows[0][0];
 
@@ -873,7 +891,7 @@ app.post('/guardar-votos', async (req, res) => {
       } else {
         console.log('Correo de confirmación enviado:', info.response);
       }
-    });
+    }); */
 
     res.status(200).json({ message: 'Su voto fue guardado correctamente y se ha enviado un correo de confirmación.' });
 
@@ -954,6 +972,8 @@ app.get('/obtener-candidatos', async (req, res) => {
 app.get('/verificar-voto', async (req, res) => {
   const { usuario, periodo } = req.query;
 
+  const idHasheado = hashUsuario(usuario);
+
   try {
     const connection = await oracledb.getConnection(dbConfig);
 
@@ -965,7 +985,7 @@ app.get('/verificar-voto', async (req, res) => {
         AND PERIODO_POSTULACION = :periodo
     `;
 
-    const result = await connection.execute(query, [usuario, periodo]);
+    const result = await connection.execute(query, [idHasheado, periodo]);
 
     // Extraer el resultado de la consulta
     const votoRealizado = result.rows[0][0] > 0;
@@ -1167,24 +1187,47 @@ app.get('/api/resultados/departamento', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
 
-    const result = await connection.execute(
-      `SELECT U.DEPARTAMENTO_US AS nombre, COUNT(V.ID_US) AS votos
-       FROM VOTOS V
-       JOIN USUARIOS U ON V.ID_US = U.ID_US
-       WHERE V.PERIODO_POSTULACION = :periodo
-       GROUP BY U.DEPARTAMENTO_US`,
+    // Primero obtener todos los usuarios con sus departamentos
+    const usuariosResult = await connection.execute(
+      `SELECT ID_US, DEPARTAMENTO_US
+       FROM USUARIOS
+       WHERE ID_ROL = '2' AND ESTADO_US = '1'`
+    );
+
+    // Obtener todos los votos del periodo
+    const votosResult = await connection.execute(
+      `SELECT ID_US
+       FROM VOTOS
+       WHERE PERIODO_POSTULACION = :periodo`,
       [periodo]
     );
 
-    const data = result.rows.map(row => ({
-      nombre: row[0],
-      votos: row[1]
+    // Crear un Map de usuarios hasheados que han votado
+    const votosSet = new Set(votosResult.rows.map(([idUs]) => idUs));
+
+    // Agrupar votos por departamento
+    const departamentosMap = new Map();
+
+    usuariosResult.rows.forEach(([idUs, departamento]) => {
+      const idHasheado = hashUsuario(idUs);
+      if (votosSet.has(idHasheado)) {
+        departamentosMap.set(
+          departamento, 
+          (departamentosMap.get(departamento) || 0) + 1
+        );
+      }
+    });
+
+    // Convertir el Map a el formato esperado por el frontend
+    const data = Array.from(departamentosMap.entries()).map(([nombre, votos]) => ({
+      nombre,
+      votos
     }));
 
     res.json(data);
     await connection.close();
   } catch (err) {
-    console.error(err);
+    console.error('Error al obtener resultados por departamento:', err);
     res.status(500).send('Error en el servidor');
   }
 });
@@ -1199,51 +1242,52 @@ app.get('/api/auditoria', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
 
-    // Consulta para obtener el total de votantes con id_rol = 2 y estado_us = 1
-    const totalVotantesResult = await connection.execute(
-      `SELECT COUNT(*) AS totalVotantes
+    // Consulta para obtener todos los usuarios elegibles
+    const usuariosResult = await connection.execute(
+      `SELECT ID_US, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US
        FROM USUARIOS
        WHERE ID_ROL = '2' AND ESTADO_US = '1'`
     );
-    const totalVotantes = totalVotantesResult.rows[0][0];
 
-    // Consulta para obtener el número de votantes que han votado en el periodo seleccionado (sin importar si aceptaron auditoría)
-    const votantesQueHanVotadoResult = await connection.execute(
-      `SELECT COUNT(DISTINCT v.ID_US) AS votantesQueHanVotado
-       FROM VOTOS v
-       JOIN USUARIOS u ON v.ID_US = u.ID_US
-       WHERE v.PERIODO_POSTULACION = :periodo
-       AND u.ID_ROL = '2'
-       AND u.ESTADO_US = '1'`,
-      [periodo]
-    );
-    const votantesQueHanVotado = votantesQueHanVotadoResult.rows[0][0];
-
-    // Consulta para obtener los detalles de los votantes para la auditoría
-    const usuariosAuditadosResult = await connection.execute(
-      `SELECT u.ID_US AS id, u.NOMBRE_US AS nombre, u.APELLIDO_US AS apellido, u.DEPARTAMENTO_US AS departamento,
-              CASE
-                WHEN v.ID_US IS NOT NULL AND v.ACEPTA_AUDITORIA = 1 THEN 'SI'
-                ELSE 'NO'
-              END AS haVotado
-       FROM USUARIOS u
-       LEFT JOIN VOTOS v ON u.ID_US = v.ID_US
-       AND v.PERIODO_POSTULACION = :periodo
-       WHERE u.ID_ROL = '2'
-       AND u.ESTADO_US = '1'
-       AND (v.ACEPTA_AUDITORIA = 1 OR v.ID_US IS NULL)`, // Solo mostrar si aceptaron la auditoría o si aún no han votado
+    // Obtener todos los votos del periodo
+    const votosResult = await connection.execute(
+      `SELECT ID_US, ACEPTA_AUDITORIA
+       FROM VOTOS
+       WHERE PERIODO_POSTULACION = :periodo`,
       [periodo]
     );
 
-    const usuariosAuditados = usuariosAuditadosResult.rows.map(row => ({
-      id: row[0],
-      nombre: row[1],
-      apellido: row[2],
-      departamento: row[3],
-      haVotado: row[4] === 'SI',
-    }));
+    // Crear un Set de IDs hasheados de usuarios que han votado
+    const votosMap = new Map(
+      votosResult.rows.map(([idUs, aceptaAuditoria]) => [idUs, aceptaAuditoria])
+    );
 
-    // Enviar la respuesta al frontend
+    // Procesar usuarios y sus estados de votación
+    const usuariosAuditados = usuariosResult.rows
+      .map(([id, nombre, apellido, departamento]) => {
+        const idHasheado = hashUsuario(id);
+        const haVotado = votosMap.has(idHasheado);
+        const aceptoAuditoria = haVotado ? votosMap.get(idHasheado) === 1 : false;
+
+        // Solo incluir en la auditoría si aceptó o no ha votado
+        if (aceptoAuditoria || !haVotado) {
+          return {
+            id,
+            nombre,
+            apellido,
+            departamento,
+            haVotado
+          };
+        }
+        return null;
+      })
+      .filter(usuario => usuario !== null);
+
+    // Calcular estadísticas
+    const totalVotantes = usuariosResult.rows.length;
+    const votantesQueHanVotado = votosResult.rows.length;
+
+    // Enviar la respuesta
     res.json({
       totalVotantes,
       votantesQueHanVotado,
@@ -1252,8 +1296,11 @@ app.get('/api/auditoria', async (req, res) => {
 
     await connection.close();
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error en el servidor' });
+    console.error('Error en la auditoría:', err);
+    res.status(500).json({ 
+      message: 'Error al obtener datos de auditoría',
+      error: err.message 
+    });
   }
 });
 

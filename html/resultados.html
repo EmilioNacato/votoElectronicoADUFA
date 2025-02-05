@@ -172,7 +172,7 @@
 
           if (periodo) {
             let apiUrl = filterType === 'lista' 
-              ? `/api/resultados/blockchain?periodo=${periodo}`
+              ? `/api/resultados?periodo=${periodo}`
               : `/api/resultados/departamento?periodo=${periodo}`;
             
             fetch(apiUrl)
