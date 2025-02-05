@@ -220,7 +220,6 @@
                 <th>Nombre</th>
                 <th>Apellido</th>
                 <th>Departamento</th>
-                <th>Contraseña</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -439,7 +438,6 @@
           <td>${escapeHtml(usuario.NOMBRE_US)}</td>
           <td>${escapeHtml(usuario.APELLIDO_US)}</td>
           <td>${escapeHtml(usuario.DEPARTAMENTO_US)}</td>
-          <td>${escapeHtml(usuario.CONTRASENA_US)}</td>
           <td>
             <button class="btn btn-info btn-sm btn-edit" data-id="${escapeHtml(usuario.ID_US)}">Editar</button>
             <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${escapeHtml(usuario.ID_US)}')">Eliminar</button>
