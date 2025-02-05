@@ -18,6 +18,8 @@ const axios = require('axios');
 const sharp = require('sharp');
 const csv = require('csv-parse');
 const XLSX = require('xlsx');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const app = express();
 const PORT = 40000;
@@ -233,13 +235,14 @@ async function enviarCorreosEnLotes(usuarios, link) {
 
       // Generar contraseña aleatoria
       const contrasenaAleatoria = crypto.randomBytes(4).toString('hex'); // 8 caracteres
+      const contrasenaUsHash = hashPassword(contrasenaAleatoria);
 
       // Actualizar la contraseña en la base de datos
       const updatePassword = async () => {
         const connection = await oracledb.getConnection(dbConfig);
         await connection.execute(
           `UPDATE USUARIOS SET CONTRASENA_US = :password WHERE ID_US = :userId`,
-          [contrasenaAleatoria, userId]
+          [contrasenaUsHash, userId]
         );
         await connection.commit();
         await connection.close();
@@ -477,53 +480,60 @@ app.post('/login', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     const result = await connection.execute(
-      `SELECT ID_ROL, ESTADO_US FROM USUARIOS WHERE ID_US = :username AND CONTRASENA_US = :password`,
-      [username, password]
+      `SELECT ID_ROL, ESTADO_US FROM USUARIOS WHERE ID_US = :username`,
+      [username]
     );
 
     if (result.rows.length > 0) {
       const [role, estado] = result.rows[0];
 
-      if (estado === 0) {
-        res.send('<script>alert("Su cuenta está inactiva. No tiene permiso para acceder."); window.location.href="/";</script>');
-        await connection.close();
-        return;
-      }
+      const contrasenaHash = result.rows[0][0];
+      const contrasenaValida = await comparePassword(contrasena, contrasenaHash);
+      
+      if (contrasenaValida) {
+        if (estado === 0) {
+          res.send('<script>alert("Su cuenta está inactiva. No tiene permiso para acceder."); window.location.href="/";</script>');
+          await connection.close();
+          return;
+        }
 
-      const usuario = username;
-      console.log('Usuario autenticado:', { role });
+        const usuario = username;
+        console.log('Usuario autenticado:', { role });
 
-      res.send(`
-        <script>
-          localStorage.setItem('rol', '${role}');
-          localStorage.setItem('usuario', '${usuario}');
+        res.send(`
+          <script>
+            localStorage.setItem('rol', '${role}');
+            localStorage.setItem('usuario', '${usuario}');
 
-          if (${role} === 1) {
-            window.location.href = '/html/configuracion.html';
-          } else if (${role} === 2) {
-            const storedPeriodo = localStorage.getItem('periodo');
+            if (${role} === 1) {
+              window.location.href = '/html/configuracion.html';
+            } else if (${role} === 2) {
+              const storedPeriodo = localStorage.getItem('periodo');
 
-            // Verificar si el nuevo periodo es diferente del almacenado
-            if (storedPeriodo !== '${periodo}' && '${periodo}'.trim() !== '') {
-              localStorage.setItem('periodo', '${periodo}');
-            }
+              // Verificar si el nuevo periodo es diferente del almacenado
+              if (storedPeriodo !== '${periodo}' && '${periodo}'.trim() !== '') {
+                localStorage.setItem('periodo', '${periodo}');
+              }
 
-            const finalPeriodo = localStorage.getItem('periodo');
-            if (!finalPeriodo || finalPeriodo.trim() === '') {
-              alert("El periodo no se encuentra. Por favor, vuelva a intentarlo.");
-              window.location.href = '/';
+              const finalPeriodo = localStorage.getItem('periodo');
+              if (!finalPeriodo || finalPeriodo.trim() === '') {
+                alert("El periodo no se encuentra. Por favor, vuelva a intentarlo.");
+                window.location.href = '/';
+              } else {
+                // Redirigir a votacionADUFA.html con el parámetro 'periodo' restaurado
+                window.location.href = '/html/votacionADUFA.html?periodo=' + finalPeriodo;
+              }
             } else {
-              // Redirigir a votacionADUFA.html con el parámetro 'periodo' restaurado
-              window.location.href = '/html/votacionADUFA.html?periodo=' + finalPeriodo;
+              alert("Rol desconocido");
+              window.location.href = '/';
             }
-          } else {
-            alert("Rol desconocido");
-            window.location.href = '/';
-          }
-        </script>
-      `);
+          </script>
+        `);
+      } else {
+        res.status(401).json({ error: 'Contraseña incorrecta' });
+      }  
     } else {
-      res.send('<script>alert("Credenciales incorrectas"); window.location.href="/";</script>');
+      res.send('<script>alert("Usuario incorrecto"); window.location.href="/";</script>');
     }
 
     await connection.close();
@@ -1134,9 +1144,12 @@ app.post('/api/usuarios-crud', async (req, res) => {
   const { idUs, idRol, nombreUs, apellidoUs, departamentoUs, contrasenaUs } = req.body;
   try {
     const connection = await oracledb.getConnection(dbConfig);
+    const contrasenaHash = await hashPassword(contrasenaUs);
+    
     await connection.execute(
-      `INSERT INTO USUARIOS (ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, CONTRASENA_US, ESTADO_US) VALUES (:idUs, :idRol, :nombreUs, :apellidoUs, :departamentoUs, :contrasenaUs, 1)`,
-      [idUs, idRol, nombreUs, apellidoUs, departamentoUs, contrasenaUs]
+      `INSERT INTO USUARIOS (ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, CONTRASENA_US, ESTADO_US) 
+       VALUES (:idUs, :idRol, :nombreUs, :apellidoUs, :departamentoUs, :contrasenaHash, 1)`,
+      [idUs, idRol, nombreUs, apellidoUs, departamentoUs, contrasenaHash]
     );
     await connection.commit();
     await connection.close();
@@ -1151,11 +1164,12 @@ app.post('/api/usuarios-crud', async (req, res) => {
 app.put('/api/usuarios-crud/:id', async (req, res) => {
   const id = req.params.id;
   const { idRol, nombreUs, apellidoUs, departamentoUs, contrasenaUs } = req.body;
+  const contrasenaHash = await hashPassword(contrasenaUs);
   try {
     const connection = await oracledb.getConnection(dbConfig);
     await connection.execute(
-      `UPDATE USUARIOS SET ID_ROL = :idRol, NOMBRE_US = :nombreUs, APELLIDO_US = :apellidoUs, DEPARTAMENTO_US = :departamentoUs, CONTRASENA_US = :contrasenaUs WHERE ID_US = :id AND ESTADO_US = 1`,
-      [idRol, nombreUs, apellidoUs, departamentoUs, contrasenaUs, id]
+      `UPDATE USUARIOS SET ID_ROL = :idRol, NOMBRE_US = :nombreUs, APELLIDO_US = :apellidoUs, DEPARTAMENTO_US = :departamentoUs, CONTRASENA_US = :contrasenaHash WHERE ID_US = :id AND ESTADO_US = 1`,
+      [idRol, nombreUs, apellidoUs, departamentoUs, contrasenaHash, id]
     );
     await connection.commit();
     await connection.close();
@@ -1741,6 +1755,8 @@ app.post('/api/usuarios-crud/upload', uploadDocumentos.single('file'), async (re
           throw new Error(`El rol "${id_rol}" no existe en la base de datos`);
         }
 
+        const contrasenaUsHash = hashPassword(record.CONTRASENA_US);
+
         // Insertar usuario con todos los campos requeridos
         await connection.execute(
           `INSERT INTO USUARIOS (
@@ -1768,7 +1784,7 @@ app.post('/api/usuarios-crud/upload', uploadDocumentos.single('file'), async (re
             nombre_us: record.NOMBRE_US,
             apellido_us: record.APELLIDO_US,
             departamento_us: record.DEPARTAMENTO_US,
-            contrasena_us: record.CONTRASENA_US,
+            contrasena_us: contrasenaUsHash,
             estado_us: 1,
             email_us: email_us
           }
@@ -1827,3 +1843,13 @@ app.get('/usuarios_ejemplo.xlsx', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Aplicación escuchando en http://0.0.0.0:${PORT}`);
 });
+
+// Para hashear contraseñas
+async function hashPassword(password) {
+  return await bcrypt.hash(password, saltRounds);
+}
+
+// Para verificar contraseñas
+async function comparePassword(password, hash) {
+  return await bcrypt.compare(password, hash);
+}
