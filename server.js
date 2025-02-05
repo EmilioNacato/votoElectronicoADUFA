@@ -229,38 +229,43 @@ async function enviarCorreosEnLotes(usuarios, link) {
   for (let i = 0; i < usuarios.length; i += batchSize) {
     const batch = usuarios.slice(i, i + batchSize);
 
-    let promises = batch.map((usuario, index) => {
+    let promises = batch.map(async (usuario, index) => {
       const userId = usuario[0];
       const email = usuario[1];
 
       // Generar contraseña aleatoria
       const contrasenaAleatoria = crypto.randomBytes(4).toString('hex'); // 8 caracteres
-      const contrasenaUsHash = hashPassword(contrasenaAleatoria);
+      
+      try {
+        // Primero hashear la contraseña
+        const contrasenaUsHash = await hashPassword(contrasenaAleatoria);
 
-      // Actualizar la contraseña en la base de datos
-      const updatePassword = async () => {
+        // Actualizar la contraseña en la base de datos
         const connection = await oracledb.getConnection(dbConfig);
         await connection.execute(
           `UPDATE USUARIOS SET CONTRASENA_US = :password WHERE ID_US = :userId`,
-          [contrasenaUsHash, userId]
+          {
+            password: { val: contrasenaUsHash },
+            userId: { val: userId }
+          }
         );
         await connection.commit();
         await connection.close();
-      };
 
-      // Configurar las opciones del correo
-      const mailOptions = {
-        from: 'emilionacato75@gmail.com',
-        to: email,
-        subject: 'Credenciales de Votación',
-        text: `Hola, su ID de usuario es: ${userId}\nSu contraseña es: ${contrasenaAleatoria}\nY el enlace de votación es: ${link}`
-      };
+        // Configurar las opciones del correo con la contraseña sin hashear
+        const mailOptions = {
+          from: 'emilionacato75@gmail.com',
+          to: email,
+          subject: 'Credenciales de Votación',
+          text: `Hola, su ID de usuario es: ${userId}\nSu contraseña es: ${contrasenaAleatoria}\nY el enlace de votación es: ${link}`
+        };
 
-      // Enviar correo con un retardo de 10 segundos entre cada envío
-      const enviarCorreo = enviarCorreoConRetardo(transporter, mailOptions, index * 10000);
-
-      // Ejecutar la actualización de la contraseña y el envío del correo en paralelo
-      return updatePassword().then(() => enviarCorreo);
+        // Enviar correo con un retardo
+        return await enviarCorreoConRetardo(transporter, mailOptions, index * 10000);
+      } catch (error) {
+        console.error('Error procesando usuario:', userId, error);
+        throw error;
+      }
     });
 
     await Promise.all(promises);
@@ -489,48 +494,48 @@ app.post('/login', async (req, res) => {
       console.log('contrasenaHash bdd:', contrasenaHash);
       const contrasenaValida = await comparePassword(password, contrasenaHash);
       console.log('contrasenaValida:', contrasenaValida);
-      
+
       if (contrasenaValida) {
         console.log('contrase Valida entro');
-        if (estado === 0) {
-          res.send('<script>alert("Su cuenta está inactiva. No tiene permiso para acceder."); window.location.href="/";</script>');
-          await connection.close();
-          return;
-        }
+      if (estado === 0) {
+        res.send('<script>alert("Su cuenta está inactiva. No tiene permiso para acceder."); window.location.href="/";</script>');
+        await connection.close();
+        return;
+      }
 
-        const usuario = username;
-        console.log('Usuario autenticado:', { role });
+      const usuario = username;
+      console.log('Usuario autenticado:', { role });
 
-        res.send(`
-          <script>
-            localStorage.setItem('rol', '${role}');
-            localStorage.setItem('usuario', '${usuario}');
+      res.send(`
+        <script>
+          localStorage.setItem('rol', '${role}');
+          localStorage.setItem('usuario', '${usuario}');
 
-            if (${role} === 1) {
-              window.location.href = '/html/configuracion.html';
-            } else if (${role} === 2) {
-              const storedPeriodo = localStorage.getItem('periodo');
+          if (${role} === 1) {
+            window.location.href = '/html/configuracion.html';
+          } else if (${role} === 2) {
+            const storedPeriodo = localStorage.getItem('periodo');
 
-              // Verificar si el nuevo periodo es diferente del almacenado
-              if (storedPeriodo !== '${periodo}' && '${periodo}'.trim() !== '') {
-                localStorage.setItem('periodo', '${periodo}');
-              }
-
-              const finalPeriodo = localStorage.getItem('periodo');
-              if (!finalPeriodo || finalPeriodo.trim() === '') {
-                alert("El periodo no se encuentra. Por favor, vuelva a intentarlo.");
-                window.location.href = '/';
-              } else {
-                // Redirigir a votacionADUFA.html con el parámetro 'periodo' restaurado
-                window.location.href = '/html/votacionADUFA.html?periodo=' + finalPeriodo;
-              }
-            } else {
-              alert("Rol desconocido");
-              window.location.href = '/';
+            // Verificar si el nuevo periodo es diferente del almacenado
+            if (storedPeriodo !== '${periodo}' && '${periodo}'.trim() !== '') {
+              localStorage.setItem('periodo', '${periodo}');
             }
-          </script>
-        `);
-      } else {
+
+            const finalPeriodo = localStorage.getItem('periodo');
+            if (!finalPeriodo || finalPeriodo.trim() === '') {
+              alert("El periodo no se encuentra. Por favor, vuelva a intentarlo.");
+              window.location.href = '/';
+            } else {
+              // Redirigir a votacionADUFA.html con el parámetro 'periodo' restaurado
+              window.location.href = '/html/votacionADUFA.html?periodo=' + finalPeriodo;
+            }
+          } else {
+            alert("Rol desconocido");
+            window.location.href = '/';
+          }
+        </script>
+      `);
+    } else {
         res.send('<script>alert("Contraseña incorrecta"); window.location.href="/";</script>');
       }  
     } else {
@@ -1143,21 +1148,64 @@ app.get('/api/usuarios-crud/:id', async (req, res) => {
 // Ruta para crear un nuevo usuario
 app.post('/api/usuarios-crud', async (req, res) => {
   const { idUs, idRol, nombreUs, apellidoUs, departamentoUs, contrasenaUs } = req.body;
+  let connection;
   try {
-    const connection = await oracledb.getConnection(dbConfig);
+    connection = await oracledb.getConnection(dbConfig);
     const contrasenaHash = await hashPassword(contrasenaUs);
     
+    // Verificar si el ID ya existe y agregar número si es necesario
+    let counter = 1;
+    let finalId = idUs;
+    while (true) {
+      const exists = await connection.execute(
+        'SELECT COUNT(*) FROM USUARIOS WHERE ID_US = :id_us',
+        [finalId]
+      );
+
+      if (exists.rows[0][0] === 0) break;
+      finalId = `${idUs}${counter}`;
+      counter++;
+    }
+
+    // Generar correo electrónico automáticamente
+    const email_us = `${finalId}@espe.edu.ec`;
+    
     await connection.execute(
-      `INSERT INTO USUARIOS (ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, CONTRASENA_US, ESTADO_US) 
-       VALUES (:idUs, :idRol, :nombreUs, :apellidoUs, :departamentoUs, :contrasenaHash, 1)`,
-      [idUs, idRol, nombreUs, apellidoUs, departamentoUs, contrasenaHash]
+      `INSERT INTO USUARIOS (ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, CONTRASENA_US, ESTADO_US, EMAIL_US) 
+       VALUES (:id_us, :id_rol, :nombre_us, :apellido_us, :departamento_us, :contrasena_us, 1, :email_us)`,
+      {
+        id_us: { val: finalId },
+        id_rol: { val: idRol },
+        nombre_us: { val: nombreUs },
+        apellido_us: { val: apellidoUs },
+        departamento_us: { val: departamentoUs },
+        contrasena_us: { val: contrasenaHash },
+        email_us: { val: email_us }
+      }
     );
     await connection.commit();
     await connection.close();
-    res.json({ message: 'Usuario creado exitosamente' });
+
+    // Si el ID fue modificado, informar al usuario
+    if (finalId !== idUs) {
+      res.json({ 
+        message: `Usuario creado exitosamente. El ID fue cambiado a ${finalId} porque ${idUs} ya existía.`,
+        newId: finalId 
+      });
+    } else {
+      res.json({ message: 'Usuario creado exitosamente' });
+    }
   } catch (err) {
     console.error('Error al crear el usuario:', err);
     res.status(500).json({ error: 'Error al crear el usuario' });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error al cerrar la conexión:', err);
+      }
+    }
   }
 });
 
@@ -1431,8 +1479,8 @@ app.get('/api/resultados/blockchain', async (req, res) => {
 
     } else if (filterType === 'departamento') {
       // Necesitamos obtener el departamento de cada usuario que votó
-      const connection = await oracledb.getConnection(dbConfig);
-      
+    const connection = await oracledb.getConnection(dbConfig);
+
       try {
         const departamentos = {};
         
@@ -1563,7 +1611,7 @@ app.get('/verificar-horario', async (req, res) => {
     }
 
     // Si llegamos aquí, significa que estamos en el día correcto y dentro del horario
-    res.json({ 
+    res.json({
       puedeVotar: true, 
       mensaje: 'Puede proceder con la votación.' 
     });
@@ -1780,14 +1828,14 @@ app.post('/api/usuarios-crud/upload', uploadDocumentos.single('file'), async (re
             :email_us
           )`,
           {
-            id_us: finalId,
-            id_rol: id_rol,
-            nombre_us: record.NOMBRE_US,
-            apellido_us: record.APELLIDO_US,
-            departamento_us: record.DEPARTAMENTO_US,
-            contrasena_us: contrasenaUsHash,
-            estado_us: 1,
-            email_us: email_us
+            id_us: { val: finalId },
+            id_rol: { val: id_rol },
+            nombre_us: { val: record.NOMBRE_US },
+            apellido_us: { val: record.APELLIDO_US },
+            departamento_us: { val: record.DEPARTAMENTO_US },
+            contrasena_us: { val: contrasenaUsHash },
+            estado_us: { val: 1 },
+            email_us: { val: email_us }
           }
         );
         await connection.commit();
