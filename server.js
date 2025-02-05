@@ -488,7 +488,7 @@ app.post('/login', async (req, res) => {
       const [role, estado] = result.rows[0];
 
       const contrasenaHash = result.rows[0][0];
-      const contrasenaValida = await comparePassword(contrasena, contrasenaHash);
+      const contrasenaValida = await comparePassword(password, contrasenaHash);
       
       if (contrasenaValida) {
         if (estado === 0) {
