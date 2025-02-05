@@ -480,17 +480,18 @@ app.post('/login', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     const result = await connection.execute(
-      `SELECT ID_ROL, ESTADO_US FROM USUARIOS WHERE ID_US = :username`,
+      `SELECT ID_ROL, ESTADO_US, CONTRASENA_US FROM USUARIOS WHERE ID_US = :username`,
       [username]
     );
 
     if (result.rows.length > 0) {
-      const [role, estado] = result.rows[0];
-
-      const contrasenaHash = result.rows[0][0];
+      const [role, estado, contrasenaHash] = result.rows[0];
+      console.log('contrasenaHash bdd:', contrasenaHash);
       const contrasenaValida = await comparePassword(password, contrasenaHash);
+      console.log('contrasenaValida:', contrasenaValida);
       
       if (contrasenaValida) {
+        console.log('contrase Valida entro');
         if (estado === 0) {
           res.send('<script>alert("Su cuenta está inactiva. No tiene permiso para acceder."); window.location.href="/";</script>');
           await connection.close();
@@ -530,7 +531,7 @@ app.post('/login', async (req, res) => {
           </script>
         `);
       } else {
-        res.status(401).json({ error: 'Contraseña incorrecta' });
+        res.send('<script>alert("Contraseña incorrecta"); window.location.href="/";</script>');
       }  
     } else {
       res.send('<script>alert("Usuario incorrecto"); window.location.href="/";</script>');
