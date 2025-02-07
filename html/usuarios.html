@@ -134,28 +134,24 @@
             <h2 class="mb-4">Agregación de Usuarios</h2>
             <form id="usuarioForm">
               <div class="mb-3">
-                <label for="idInput" class="form-label">ID</label>
+                <label for="idInput" class="form-label">Identificador de Usuario (Ejemplo ID: ejnacato, si ya existe se generará con un número aleatorio, ejemplo: ejnacato1, ejnacato2, etc.)</label>
                 <input type="text" class="form-control" id="idInput" required>
               </div>
               <div class="mb-3">
-                <label for="idRolInput" class="form-label">ID Rol</label>
+                <label for="idRolInput" class="form-label">Tipo de Rol (1: Administrador, 2: Votante)</label>
                 <input type="text" class="form-control" id="idRolInput" required>
               </div>
               <div class="mb-3">
-                <label for="nombreInput" class="form-label">Nombre</label>
+                <label for="nombreInput" class="form-label">Nombres del Usuario</label>
                 <input type="text" class="form-control" id="nombreInput" required>
               </div>
               <div class="mb-3">
-                <label for="apellidoInput" class="form-label">Apellido</label>
+                <label for="apellidoInput" class="form-label">Apellidos del Usuario</label>
                 <input type="text" class="form-control" id="apellidoInput" required>
               </div>
               <div class="mb-3">
-                <label for="departamentoInput" class="form-label">Departamento</label>
+                <label for="departamentoInput" class="form-label">Departamento o Área</label>
                 <input type="text" class="form-control" id="departamentoInput" required>
-              </div>
-              <div class="mb-3">
-                <label for="contrasenaInput" class="form-label">Contraseña</label>
-                <input type="password" class="form-control" id="contrasenaInput" required>
               </div>
               <button type="submit" class="btn btn-primary">Guardar</button>
             </form>
@@ -173,28 +169,24 @@
               <div class="modal-body">
                 <form id="editUserForm">
                   <div class="mb-3">
-                    <label for="editIdInput" class="form-label">ID</label>
+                    <label for="editIdInput" class="form-label">Identificador de Usuario</label>
                     <input type="text" class="form-control" id="editIdInput" readonly>
                   </div>
                   <div class="mb-3">
-                    <label for="editIdRolInput" class="form-label">ID Rol</label>
+                    <label for="editIdRolInput" class="form-label">Tipo de Rol (1: Administrador, 2: Votante)</label>
                     <input type="text" class="form-control" id="editIdRolInput" required>
                   </div>
                   <div class="mb-3">
-                    <label for="editNombreInput" class="form-label">Nombre</label>
+                    <label for="editNombreInput" class="form-label">Nombres del Usuario</label>
                     <input type="text" class="form-control" id="editNombreInput" required>
                   </div>
                   <div class="mb-3">
-                    <label for="editApellidoInput" class="form-label">Apellido</label>
+                    <label for="editApellidoInput" class="form-label">Apellidos del Usuario</label>
                     <input type="text" class="form-control" id="editApellidoInput" required>
                   </div>
                   <div class="mb-3">
-                    <label for="editDepartamentoInput" class="form-label">Departamento</label>
+                    <label for="editDepartamentoInput" class="form-label">Departamento o Área</label>
                     <input type="text" class="form-control" id="editDepartamentoInput" required>
-                  </div>
-                  <div class="mb-3">
-                    <label for="editContrasenaInput" class="form-label">Contraseña</label>
-                    <input type="password" class="form-control" id="editContrasenaInput" required>
                   </div>
                   <button type="submit" class="btn btn-primary">Guardar cambios</button>
                 </form>
@@ -220,6 +212,7 @@
                 <th>Nombre</th>
                 <th>Apellido</th>
                 <th>Departamento</th>
+                <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -353,9 +346,14 @@
         const nombre = document.getElementById('nombreInput').value;
         const apellido = document.getElementById('apellidoInput').value;
         const departamento = document.getElementById('departamentoInput').value;
-        const contrasena = document.getElementById('contrasenaInput').value;
 
-        const data = { idUs: id, idRol, nombreUs: nombre, apellidoUs: apellido, departamentoUs: departamento, contrasenaUs: contrasena };
+        const data = { 
+          idUs: id, 
+          idRol, 
+          nombreUs: nombre, 
+          apellidoUs: apellido, 
+          departamentoUs: departamento 
+        };
 
         try {
           const response = await fetch('/api/usuarios-crud', {
@@ -366,6 +364,8 @@
           const result = await response.json();
           alert(result.message);
           fetchUsuarios();
+          // Limpiar el formulario
+          usuarioForm.reset();
         } catch (err) {
           console.error('Error al guardar el usuario:', err);
           alert('Error al guardar el usuario');
@@ -438,9 +438,13 @@
           <td>${escapeHtml(usuario.NOMBRE_US)}</td>
           <td>${escapeHtml(usuario.APELLIDO_US)}</td>
           <td>${escapeHtml(usuario.DEPARTAMENTO_US)}</td>
+          <td>${usuario.ESTADO_US === 1 ? 'Activo' : 'Inactivo'}</td>
           <td>
             <button class="btn btn-info btn-sm btn-edit" data-id="${escapeHtml(usuario.ID_US)}">Editar</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteUsuario('${escapeHtml(usuario.ID_US)}')">Eliminar</button>
+            ${usuario.ESTADO_US === 1 ? 
+              `<button class="btn btn-danger btn-sm" onclick="deleteUsuario('${escapeHtml(usuario.ID_US)}')">Desactivar</button>` :
+              `<button class="btn btn-success btn-sm" onclick="activarUsuario('${escapeHtml(usuario.ID_US)}')">Activar</button>`
+            }
           </td>
         `;
         usuariosTableBody.appendChild(row);
@@ -468,7 +472,6 @@
           document.getElementById('editNombreInput').value = user.NOMBRE_US;
           document.getElementById('editApellidoInput').value = user.APELLIDO_US;
           document.getElementById('editDepartamentoInput').value = user.DEPARTAMENTO_US;
-          document.getElementById('editContrasenaInput').value = user.CONTRASENA_US;
 
           const editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
           editUserModal.show();
@@ -487,9 +490,8 @@
       const nombre = document.getElementById('editNombreInput').value;
       const apellido = document.getElementById('editApellidoInput').value;
       const departamento = document.getElementById('editDepartamentoInput').value;
-      const contrasena = document.getElementById('editContrasenaInput').value;
 
-      const data = { idRol, nombreUs: nombre, apellidoUs: apellido, departamentoUs: departamento, contrasenaUs: contrasena };
+      const data = { idRol, nombreUs: nombre, apellidoUs: apellido, departamentoUs: departamento };
 
       try {
         const response = await fetch(`/api/usuarios-crud/${id}`, {
@@ -510,9 +512,9 @@
     });
 
     function deleteUsuario(id) {
-      if (confirm('¿Está seguro de que desea eliminar este usuario?')) {
-        fetch(`/api/usuarios-crud/${id}`, {
-          method: 'DELETE'
+      if (confirm('¿Está seguro de que desea desactivar este usuario?')) {
+        fetch(`/api/usuarios-crud/${id}/desactivar`, {
+          method: 'PUT'
         })
           .then(response => response.json())
           .then(result => {
@@ -520,8 +522,25 @@
             fetchUsuarios();
           })
           .catch(err => {
-            console.error('Error al eliminar el usuario:', err);
-            alert('Error al eliminar el usuario');
+            console.error('Error al desactivar el usuario:', err);
+            alert('Error al desactivar el usuario');
+          });
+      }
+    }
+
+    function activarUsuario(id) {
+      if (confirm('¿Está seguro de que desea activar este usuario?')) {
+        fetch(`/api/usuarios-crud/${id}/activar`, {
+          method: 'PUT'
+        })
+          .then(response => response.json())
+          .then(result => {
+            alert(result.message);
+            fetchUsuarios();
+          })
+          .catch(err => {
+            console.error('Error al activar el usuario:', err);
+            alert('Error al activar el usuario');
           });
       }
     }

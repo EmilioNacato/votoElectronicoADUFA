@@ -94,7 +94,7 @@
                   <div class="form-group row my-2">
                     <label for="fechaPublicacion" class="col-sm-4 col-form-label">Fecha de Publicación</label>
                     <div class="col-sm-8">
-                      <input type="date" class="form-control" id="fechaPublicacion" name="fechaPublicacion">
+                      <input type="date" class="form-control" id="fechaPublicacion" name="fechaPublicacion" min="" max="" required>
                     </div>
                   </div>
                   <div class="form-group">
@@ -164,6 +164,25 @@
       if (usuario) {
         document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
       }
+
+      // Configurar las fechas mínima y máxima permitidas
+      const fechaPublicacion = document.getElementById('fechaPublicacion');
+      const hoy = new Date();
+      const maxDate = new Date();
+      maxDate.setFullYear(hoy.getFullYear() + 10); // Máximo 10 años en el futuro
+      
+      // Formatear las fechas para el input date
+      const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      // Establecer fecha mínima como hoy
+      const fechaMinima = formatDate(hoy);
+      fechaPublicacion.setAttribute('min', fechaMinima);
+      fechaPublicacion.setAttribute('max', formatDate(maxDate));
 
       // Manejar el cierre de sesión
       document.getElementById('logout-button').addEventListener('click', function() {

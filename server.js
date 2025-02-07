@@ -314,14 +314,27 @@ app.post('/guardar-configuracion', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Faltan datos en la configuración.' });
     }
 
-    // Convertir la fecha a un objeto Date
-    const fecha = new Date(fechaPublicacion);
-    const fechaOracle = fecha.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    // Validar que la fecha esté en un rango razonable
+    const fechaActual = new Date();
+    const fechaMaxima = new Date();
+    fechaMaxima.setFullYear(fechaActual.getFullYear() + 10);
+    const fechaPublicacionDate = new Date(fechaPublicacion);
+
+    if (fechaPublicacionDate < fechaActual || fechaPublicacionDate > fechaMaxima) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'La fecha debe estar entre hoy y ' + fechaMaxima.getFullYear() 
+      });
+    }
+
+    // Convertir la fecha al formato esperado por Oracle (DD/MM/YYYY)
+    const [year, month, day] = fechaPublicacion.split('-');
+    const fechaOracle = `${day}/${month}/${year}`;
 
     // Insertar en la tabla CONFIGURACION_VOTACION
     await connection.execute(
       `INSERT INTO CONFIGURACION_VOTACION (PERIODO_POSTULACION, FECHA_PUBLICACION, HORA_INICIO, HORA_FIN) 
-       VALUES (:periodo, TO_DATE(:fechaPublicacion, 'YYYY-MM-DD'), :horaInicio, :horaFin)`,
+       VALUES (:periodo, TO_DATE(:fechaPublicacion, 'DD/MM/YYYY'), :horaInicio, :horaFin)`,
       {
         periodo: periodo,
         fechaPublicacion: fechaOracle,
@@ -330,8 +343,8 @@ app.post('/guardar-configuracion', async (req, res) => {
       }
     );
 
-    console.log('Configuración guardada:', { periodo, fechaPublicacion, horaInicio, horaFin });
-    await connection.commit(); // Asegúrate de hacer commit después de la inserción
+    console.log('Configuración guardada:', { periodo, fechaPublicacion: fechaOracle, horaInicio, horaFin });
+    await connection.commit();
     res.json({ success: true });
   } catch (error) {
     console.error('Error al guardar la configuración:', error);
@@ -485,59 +498,95 @@ app.post('/login', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     const result = await connection.execute(
-      `SELECT ID_ROL, ESTADO_US, CONTRASENA_US FROM USUARIOS WHERE ID_US = :username`,
+      `SELECT ID_ROL, ESTADO_US, CONTRASENA_US, INTENTOS_FALLIDOS, EMAIL_US 
+       FROM USUARIOS 
+       WHERE ID_US = :username`,
       [username]
     );
 
     if (result.rows.length > 0) {
-      const [role, estado, contrasenaHash] = result.rows[0];
-      console.log('contrasenaHash bdd:', contrasenaHash);
-      const contrasenaValida = await comparePassword(password, contrasenaHash);
-      console.log('contrasenaValida:', contrasenaValida);
+      const [role, estado, contrasenaHash, intentosFallidos, email] = result.rows[0];
 
-      if (contrasenaValida) {
-        console.log('contrase Valida entro');
+      // Verificar si el usuario está activo
       if (estado === 0) {
-        res.send('<script>alert("Su cuenta está inactiva. No tiene permiso para acceder."); window.location.href="/";</script>');
+        res.send('<script>alert("Su cuenta está inactiva. Por favor, contacte al administrador."); window.location.href="/";</script>');
         await connection.close();
         return;
       }
 
-      const usuario = username;
-      console.log('Usuario autenticado:', { role });
+      const contrasenaValida = await comparePassword(password, contrasenaHash);
 
-      res.send(`
-        <script>
-          localStorage.setItem('rol', '${role}');
-          localStorage.setItem('usuario', '${usuario}');
+      if (contrasenaValida) {
+        // Solo resetear contador de intentos si es rol 2 (votante)
+        if (role === '2') {
+          await connection.execute(
+            `UPDATE USUARIOS SET INTENTOS_FALLIDOS = 0 WHERE ID_US = :username`,
+            [username]
+          );
+          await connection.commit();
+        }
 
-          if (${role} === 1) {
-            window.location.href = '/html/configuracion.html';
-          } else if (${role} === 2) {
-            const storedPeriodo = localStorage.getItem('periodo');
+        const usuario = username;
+        console.log('Usuario autenticado:', { role });
 
-            // Verificar si el nuevo periodo es diferente del almacenado
-            if (storedPeriodo !== '${periodo}' && '${periodo}'.trim() !== '') {
-              localStorage.setItem('periodo', '${periodo}');
-            }
+        res.send(`
+          <script>
+            localStorage.setItem('rol', '${role}');
+            localStorage.setItem('usuario', '${usuario}');
 
-            const finalPeriodo = localStorage.getItem('periodo');
-            if (!finalPeriodo || finalPeriodo.trim() === '') {
-              alert("El periodo no se encuentra. Por favor, vuelva a intentarlo.");
-              window.location.href = '/';
+            if (${role} === 1) {
+              window.location.href = '/html/configuracion.html';
+            } else if (${role} === 2) {
+              const storedPeriodo = localStorage.getItem('periodo');
+
+              if (storedPeriodo !== '${periodo}' && '${periodo}'.trim() !== '') {
+                localStorage.setItem('periodo', '${periodo}');
+              }
+
+              const finalPeriodo = localStorage.getItem('periodo');
+              if (!finalPeriodo || finalPeriodo.trim() === '') {
+                alert("El periodo no se encuentra. Por favor, vuelva a intentarlo.");
+                window.location.href = '/';
+              } else {
+                window.location.href = '/html/votacionADUFA.html?periodo=' + finalPeriodo;
+              }
             } else {
-              // Redirigir a votacionADUFA.html con el parámetro 'periodo' restaurado
-              window.location.href = '/html/votacionADUFA.html?periodo=' + finalPeriodo;
+              alert("Rol desconocido");
+              window.location.href = '/';
             }
+          </script>
+        `);
+      } else {
+        // Solo incrementar intentos y bloquear si es rol 2 (votante)
+        if (role === '2') {
+          const nuevosIntentos = (intentosFallidos || 0) + 1;
+          
+          if (nuevosIntentos >= 3) {
+            // Desactivar usuario y resetear contador
+            await connection.execute(
+              `UPDATE USUARIOS 
+               SET ESTADO_US = 0, INTENTOS_FALLIDOS = 0 
+               WHERE ID_US = :username`,
+              [username]
+            );
+            await connection.commit();
+            res.send('<script>alert("Su cuenta ha sido bloqueada por múltiples intentos fallidos. Por favor, contacte al administrador."); window.location.href="/";</script>');
           } else {
-            alert("Rol desconocido");
-            window.location.href = '/';
+            // Solo incrementar el contador
+            await connection.execute(
+              `UPDATE USUARIOS 
+               SET INTENTOS_FALLIDOS = :intentos 
+               WHERE ID_US = :username`,
+              [nuevosIntentos, username]
+            );
+            await connection.commit();
+            res.send(`<script>alert("Contraseña incorrecta. Intentos restantes: ${3 - nuevosIntentos}"); window.location.href="/";</script>`);
           }
-        </script>
-      `);
-    } else {
-        res.send('<script>alert("Contraseña incorrecta"); window.location.href="/";</script>');
-      }  
+        } else {
+          // Para administradores, simplemente mostrar error
+          res.send('<script>alert("Contraseña incorrecta"); window.location.href="/";</script>');
+        }
+      }
     } else {
       res.send('<script>alert("Usuario incorrecto"); window.location.href="/";</script>');
     }
@@ -1071,43 +1120,81 @@ app.get('/api/resultados', async (req, res) => {
     `;
 
     const resultNumVotantesUnicos = await connection.execute(queryNumVotantesUnicos, [periodo]);
-    const numeroVotantesUnicos = resultNumVotantesUnicos.rows[0][0]; // Número de votantes únicos
-    console.log(`Número de votantes únicos para el período ${periodo}: ${numeroVotantesUnicos}`);
+    const numeroVotantesUnicos = resultNumVotantesUnicos.rows[0][0];
 
+    // Consulta para obtener los resultados por lista
     const query = `
-      SELECT l.NOMBRE_LISTA, COUNT(v.ID_US) AS VOTOS
+      SELECT l.NOMBRE_LISTA, l.ID_LISTA, COUNT(v.ID_US) AS VOTOS
       FROM VOTOS v
       JOIN LISTAS l ON v.ID_LISTA = l.ID_LISTA AND v.PERIODO_POSTULACION = l.PERIODO_POSTULACION
       WHERE v.PERIODO_POSTULACION = :periodo
-      GROUP BY l.NOMBRE_LISTA
+      GROUP BY l.NOMBRE_LISTA, l.ID_LISTA
       ORDER BY VOTOS DESC
     `;
 
     const result = await connection.execute(query, [periodo]);
-    await connection.close();
-
     const resultados = [];
+    let listaGanadora = null;
+    let maxVotos = 0;
 
-    result.rows.forEach(row => {
-      const [nombre, votos] = row;
-      resultados.push({ nombre, votos });
-    });
+    // Procesar resultados y encontrar la lista ganadora
+    for (const row of result.rows) {
+      const [nombre, idLista, votos] = row;
+      const porcentaje = ((votos / numeroVotantesUnicos) * 100).toFixed(2);
+      
+      if (nombre.toLowerCase() !== 'nulo' && nombre.toLowerCase() !== 'blanco' && votos > maxVotos) {
+        maxVotos = votos;
+        listaGanadora = { nombre, idLista, votos, porcentaje };
+      }
+      
+      resultados.push({ nombre, votos, porcentaje });
+    }
 
-    res.json(resultados);
+    // Si hay una lista ganadora, obtener información de sus candidatos
+    let ganadores = null;
+    if (listaGanadora) {
+      const queryCandidatos = `
+        SELECT c.DIGNIDAD_CAND, u.NOMBRE_US, u.APELLIDO_US
+        FROM CANDIDATOS c
+        JOIN USUARIOS u ON c.ID_US = u.ID_US
+        WHERE c.ID_LISTA = :idLista 
+        AND c.PERIODO_POSTULACION = :periodo
+        AND c.DIGNIDAD_CAND IN ('presidente', 'vicepresidente')
+      `;
+
+      const candidatosResult = await connection.execute(
+        queryCandidatos, 
+        [listaGanadora.idLista, periodo],
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
+      ganadores = {
+        lista: listaGanadora.nombre,
+        votos: listaGanadora.votos,
+        porcentaje: listaGanadora.porcentaje,
+        candidatos: candidatosResult.rows.map(row => ({
+          dignidad: row.DIGNIDAD_CAND,
+          nombre: `${row.NOMBRE_US} ${row.APELLIDO_US}`,
+          foto: `../assets/img/fotosListas/foto${row.DIGNIDAD_CAND.charAt(0).toUpperCase() + row.DIGNIDAD_CAND.slice(1)}${listaGanadora.idLista}periodo${periodo}.png`
+        }))
+      };
+    }
+
+    await connection.close();
+    res.json({ resultados, ganadores });
   } catch (err) {
     console.error('Error al obtener los resultados:', err);
     res.status(500).send('Error al obtener los resultados');
   }
 });
 
-// Ruta para obtener todos los usuarios activos
+// Ruta para obtener todos los usuarios activos e inactivos
 app.get('/api/usuarios-crud', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     const result = await connection.execute(
-      `SELECT ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, CONTRASENA_US 
+      `SELECT ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, ESTADO_US 
        FROM USUARIOS 
-       WHERE ESTADO_US = 1 
        ORDER BY ID_US`,
       [],
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -1125,7 +1212,12 @@ app.get('/api/usuarios-crud/:id', async (req, res) => {
   const id = req.params.id;
   try {
     const connection = await oracledb.getConnection(dbConfig);
-    const result = await connection.execute(`SELECT ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, CONTRASENA_US FROM USUARIOS WHERE ID_US = :id AND ESTADO_US = 1`, [id]);
+    const result = await connection.execute(
+      `SELECT ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US 
+       FROM USUARIOS 
+       WHERE ID_US = :id`,
+      [id]
+    );
     await connection.close();
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -1136,8 +1228,7 @@ app.get('/api/usuarios-crud/:id', async (req, res) => {
       ID_ROL: row[1],
       NOMBRE_US: row[2],
       APELLIDO_US: row[3],
-      DEPARTAMENTO_US: row[4],
-      CONTRASENA_US: row[5]
+      DEPARTAMENTO_US: row[4]
     });
   } catch (err) {
     console.error('Error al obtener el usuario:', err);
@@ -1147,28 +1238,68 @@ app.get('/api/usuarios-crud/:id', async (req, res) => {
 
 // Ruta para crear un nuevo usuario
 app.post('/api/usuarios-crud', async (req, res) => {
-  const { idUs, idRol, nombreUs, apellidoUs, departamentoUs, contrasenaUs } = req.body;
+  const { idUs, idRol, nombreUs, apellidoUs, departamentoUs } = req.body;
   let connection;
   try {
     connection = await oracledb.getConnection(dbConfig);
-    const contrasenaHash = await hashPassword(contrasenaUs);
     
     // Verificar si el ID ya existe y agregar número si es necesario
     let counter = 1;
     let finalId = idUs;
-    while (true) {
-      const exists = await connection.execute(
-        'SELECT COUNT(*) FROM USUARIOS WHERE ID_US = :id_us',
-        [finalId]
-      );
+    let baseId = idUs;
+    let startingNumber = 1;
 
-      if (exists.rows[0][0] === 0) break;
-      finalId = `${idUs}${counter}`;
-      counter++;
+    // Extraer el número del final del ID si existe
+    const matches = idUs.match(/^([a-zA-Z]+)(\d+)$/);
+    if (matches) {
+      baseId = matches[1];
+      startingNumber = parseInt(matches[2]);
+    }
+
+    // Buscar todos los IDs que empiecen con el ID base
+    const existingIds = await connection.execute(
+      'SELECT ID_US FROM USUARIOS WHERE ID_US LIKE :id_pattern ORDER BY ID_US',
+      { id_pattern: { val: `${baseId}%` } }
+    );
+
+    if (existingIds.rows.length === 0) {
+      // No existe ningún ID con este patrón
+      finalId = idUs;
+    } else {
+      // Verificar si el ID exacto ya existe
+      const exactMatch = existingIds.rows.find(row => row[0] === finalId);
+      if (!exactMatch) {
+        // Si el ID exacto no existe, podemos usarlo
+        finalId = idUs;
+      } else {
+        // Crear un conjunto de números ya usados
+        const numerosUsados = new Set();
+        existingIds.rows.forEach(row => {
+          const id = row[0];
+          if (id.startsWith(baseId)) {
+            const numMatch = id.substring(baseId.length).match(/^\d+$/);
+            if (numMatch) {
+              numerosUsados.add(parseInt(numMatch[0]));
+            }
+          }
+        });
+
+        // Encontrar el primer número disponible
+        let numeroDisponible = 1;
+        while (numerosUsados.has(numeroDisponible)) {
+          numeroDisponible++;
+        }
+
+        finalId = `${baseId}${numeroDisponible}`;
+      }
     }
 
     // Generar correo electrónico automáticamente
     const email_us = `${finalId}@espe.edu.ec`;
+
+    // Generar contraseña aleatoria y hashearla
+    const contrasenaAleatoria = crypto.randomBytes(4).toString('hex');
+    const contrasenaHash = await hashPassword(contrasenaAleatoria);
     
     await connection.execute(
       `INSERT INTO USUARIOS (ID_US, ID_ROL, NOMBRE_US, APELLIDO_US, DEPARTAMENTO_US, CONTRASENA_US, ESTADO_US, EMAIL_US) 
@@ -1184,16 +1315,17 @@ app.post('/api/usuarios-crud', async (req, res) => {
       }
     );
     await connection.commit();
-    await connection.close();
 
     // Si el ID fue modificado, informar al usuario
     if (finalId !== idUs) {
       res.json({ 
-        message: `Usuario creado exitosamente. El ID fue cambiado a ${finalId} porque ${idUs} ya existía.`,
+        message: `Usuario creado exitosamente con ID ${finalId} (el ID fue modificado porque ${idUs} ya existía).\nLa contraseña se asignará cuando inicie un proceso de votación.`,
         newId: finalId 
       });
     } else {
-      res.json({ message: 'Usuario creado exitosamente' });
+      res.json({ 
+        message: `Usuario creado exitosamente.\nLa contraseña se asignará cuando inicie un proceso de votación.` 
+      });
     }
   } catch (err) {
     console.error('Error al crear el usuario:', err);
@@ -1212,13 +1344,13 @@ app.post('/api/usuarios-crud', async (req, res) => {
 // Ruta para actualizar un usuario existente
 app.put('/api/usuarios-crud/:id', async (req, res) => {
   const id = req.params.id;
-  const { idRol, nombreUs, apellidoUs, departamentoUs, contrasenaUs } = req.body;
-  const contrasenaHash = await hashPassword(contrasenaUs);
+  const { idRol, nombreUs, apellidoUs, departamentoUs } = req.body;
   try {
     const connection = await oracledb.getConnection(dbConfig);
     await connection.execute(
-      `UPDATE USUARIOS SET ID_ROL = :idRol, NOMBRE_US = :nombreUs, APELLIDO_US = :apellidoUs, DEPARTAMENTO_US = :departamentoUs, CONTRASENA_US = :contrasenaHash WHERE ID_US = :id AND ESTADO_US = 1`,
-      [idRol, nombreUs, apellidoUs, departamentoUs, contrasenaHash, id]
+      `UPDATE USUARIOS SET ID_ROL = :idRol, NOMBRE_US = :nombreUs, APELLIDO_US = :apellidoUs, DEPARTAMENTO_US = :departamentoUs 
+       WHERE ID_US = :id`,
+      [idRol, nombreUs, apellidoUs, departamentoUs, id]
     );
     await connection.commit();
     await connection.close();
@@ -1226,6 +1358,92 @@ app.put('/api/usuarios-crud/:id', async (req, res) => {
   } catch (err) {
     console.error('Error al actualizar el usuario:', err);
     res.status(500).json({ error: 'Error al actualizar el usuario' });
+  }
+});
+
+// Ruta para desactivar un usuario
+app.put('/api/usuarios-crud/:id/desactivar', async (req, res) => {
+  const id = req.params.id;
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    await connection.execute(
+      `UPDATE USUARIOS SET ESTADO_US = 0 WHERE ID_US = :id`,
+      [id]
+    );
+    await connection.commit();
+    await connection.close();
+    res.json({ message: 'Usuario desactivado exitosamente' });
+  } catch (err) {
+    console.error('Error al desactivar el usuario:', err);
+    res.status(500).json({ error: 'Error al desactivar el usuario' });
+  }
+});
+
+// Ruta para activar un usuario
+app.put('/api/usuarios-crud/:id/activar', async (req, res) => {
+  const id = req.params.id;
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+
+    // Primero verificar el rol del usuario
+    const rolResult = await connection.execute(
+      `SELECT ID_ROL, EMAIL_US FROM USUARIOS WHERE ID_US = :id`,
+      [id]
+    );
+
+    if (rolResult.rows.length === 0) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    const [rol, email] = rolResult.rows[0];
+
+    // Solo generar nueva contraseña y enviar correo si es rol 2 (votante)
+    if (rol === '2') {
+      // Generar nueva contraseña aleatoria
+      const nuevaContrasena = crypto.randomBytes(4).toString('hex');
+      const contrasenaHash = await hashPassword(nuevaContrasena);
+
+      // Actualizar usuario: activar, resetear intentos y actualizar contraseña
+      await connection.execute(
+        `UPDATE USUARIOS 
+         SET ESTADO_US = 1, 
+             INTENTOS_FALLIDOS = 0,
+             CONTRASENA_US = :contrasena
+         WHERE ID_US = :id`,
+        [contrasenaHash, id]
+      );
+
+      // Enviar correo con la nueva contraseña
+      const mailOptions = {
+        from: 'emilionacato75@gmail.com',
+        to: email,
+        subject: 'Cuenta Reactivada - Nueva Contraseña',
+        text: `Su cuenta ha sido reactivada.\n\nSu nueva contraseña es: ${nuevaContrasena}\n\nPor favor, ingrese al sistema con estas nuevas credenciales.`
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error('Error al enviar el correo:', error);
+        } else {
+          console.log('Correo enviado:', info.response);
+        }
+      });
+
+      res.json({ message: 'Usuario activado exitosamente y nueva contraseña enviada por correo' });
+    } else {
+      // Para administradores, solo activar la cuenta
+      await connection.execute(
+        `UPDATE USUARIOS SET ESTADO_US = 1 WHERE ID_US = :id`,
+        [id]
+      );
+      res.json({ message: 'Usuario activado exitosamente' });
+    }
+
+    await connection.commit();
+    await connection.close();
+  } catch (err) {
+    console.error('Error al activar el usuario:', err);
+    res.status(500).json({ error: 'Error al activar el usuario' });
   }
 });
 
@@ -1777,18 +1995,55 @@ app.post('/api/usuarios-crud/upload', uploadDocumentos.single('file'), async (re
         // Verificar si el ID ya existe y agregar número si es necesario
         let counter = 1;
         let finalId = id_us;
-        while (true) {
-          const exists = await connection.execute(
-            'SELECT COUNT(*) FROM USUARIOS WHERE ID_US = :id_us',
-            [finalId]
-          );
+        let baseId = idUs;
+        let startingNumber = 1;
 
-          if (exists.rows[0][0] === 0) break;
-          finalId = `${id_us}${counter}`;
-          counter++;
+        // Extraer el número del final del ID si existe
+        const matches = idUs.match(/^([a-zA-Z]+)(\d+)$/);
+        if (matches) {
+          baseId = matches[1];
+          startingNumber = parseInt(matches[2]);
         }
 
-        // Generar correo electrónico
+        // Buscar todos los IDs que empiecen con el ID base
+        const existingIds = await connection.execute(
+          'SELECT ID_US FROM USUARIOS WHERE ID_US LIKE :id_pattern ORDER BY ID_US',
+          { id_pattern: { val: `${baseId}%` } }
+        );
+
+        if (existingIds.rows.length === 0) {
+          // No existe ningún ID con este patrón
+          finalId = idUs;
+        } else {
+          // Verificar si el ID exacto ya existe
+          const exactMatch = existingIds.rows.find(row => row[0] === finalId);
+          if (!exactMatch) {
+            // Si el ID exacto no existe, podemos usarlo
+            finalId = idUs;
+          } else {
+            // Crear un conjunto de números ya usados
+            const numerosUsados = new Set();
+            existingIds.rows.forEach(row => {
+              const id = row[0];
+              if (id.startsWith(baseId)) {
+                const numMatch = id.substring(baseId.length).match(/^\d+$/);
+                if (numMatch) {
+                  numerosUsados.add(parseInt(numMatch[0]));
+                }
+              }
+            });
+
+            // Encontrar el primer número disponible
+            let numeroDisponible = 1;
+            while (numerosUsados.has(numeroDisponible)) {
+              numeroDisponible++;
+            }
+
+            finalId = `${baseId}${numeroDisponible}`;
+          }
+        }
+
+        // Generar correo electrónico automáticamente
         const email_us = `${finalId}@espe.edu.ec`;
 
         // Usar '2' como valor por defecto para ID_ROL si no está presente
@@ -1902,3 +2157,132 @@ async function hashPassword(password) {
 async function comparePassword(password, hash) {
   return await bcrypt.compare(password, hash);
 }
+
+// Set para almacenar periodos que ya están siendo procesados
+const periodosEnProceso = new Set();
+
+// Función para verificar periodos y actualizar contraseñas
+async function verificarPeriodosYActualizarContrasenas() {
+  let connection;
+  try {
+    connection = await oracledb.getConnection(dbConfig);
+    
+    // Obtener la hora actual de Oracle en timezone correcto
+    const timeResult = await connection.execute(
+      `SELECT 
+        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'America/New_York', 'DD/MM/YYYY') as fecha_actual,
+        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'America/New_York', 'HH24:MI:SS') as hora_actual
+       FROM DUAL`
+    );
+
+    const fechaActual = timeResult.rows[0][0];
+    const horaActual = timeResult.rows[0][1];
+
+    // Obtener periodos activos
+    const periodosResult = await connection.execute(
+      `SELECT 
+        PERIODO_POSTULACION,
+        TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
+        HORA_FIN
+       FROM CONFIGURACION_VOTACION 
+       WHERE ESTADO_PERIODO = 1`,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    for (const periodo of periodosResult.rows) {
+      // Si el periodo ya está siendo procesado, saltarlo
+      if (periodosEnProceso.has(periodo.PERIODO_POSTULACION)) {
+        continue;
+      }
+
+      // Convertir fechas a objetos Date para comparación
+      const [diaVot, mesVot, anioVot] = periodo.FECHA_VOTACION.split('/');
+      const fechaVotObj = new Date(anioVot, mesVot - 1, diaVot);
+      
+      const [diaAct, mesAct, anioAct] = fechaActual.split('/');
+      const fechaActObj = new Date(anioAct, mesAct - 1, diaAct);
+
+      // Convertir horas a minutos para comparación
+      const [horaActualHH, horaActualMM, horaActualSS] = horaActual.split(':').map(Number);
+      const minutosActuales = horaActualHH * 60 + horaActualMM;
+
+      const [horaFinHH, horaFinMM] = periodo.HORA_FIN.split(':').map(Number);
+      const minutosFinVotacion = horaFinHH * 60 + horaFinMM;
+
+      // Verificar si es el mismo día y pasó la hora de fin
+      const esHoy = fechaActObj.getFullYear() === fechaVotObj.getFullYear() &&
+                   fechaActObj.getMonth() === fechaVotObj.getMonth() &&
+                   fechaActObj.getDate() === fechaVotObj.getDate();
+      
+      const pasaronHoraFin = minutosActuales > minutosFinVotacion || 
+                            (minutosActuales === minutosFinVotacion && horaActualSS > 0);
+
+      if (esHoy && pasaronHoraFin) {
+        // Marcar el periodo como en proceso
+        periodosEnProceso.add(periodo.PERIODO_POSTULACION);
+
+        console.log(`Actualizando contraseñas para periodo ${periodo.PERIODO_POSTULACION}...`);
+        
+        try {
+          // Obtener usuarios votantes
+          const usuarios = await connection.execute(
+            `SELECT ID_US FROM USUARIOS WHERE ID_ROL = '2' AND ESTADO_US = 1`,
+            [],
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+
+          // Actualizar contraseñas
+          for (const usuario of usuarios.rows) {
+            const nuevaContrasena = crypto.randomBytes(4).toString('hex');
+            const contrasenaHash = await hashPassword(nuevaContrasena);
+
+            await connection.execute(
+              `UPDATE USUARIOS SET CONTRASENA_US = :password WHERE ID_US = :userId`,
+              {
+                password: { val: contrasenaHash },
+                userId: { val: usuario.ID_US }
+              }
+            );
+          }
+
+          // Actualizar estado del periodo a finalizado
+          await connection.execute(
+            `UPDATE CONFIGURACION_VOTACION SET ESTADO_PERIODO = 0 
+             WHERE PERIODO_POSTULACION = :periodo`,
+            { periodo: { val: periodo.PERIODO_POSTULACION } }
+          );
+
+          await connection.commit();
+          console.log(`✓ Periodo ${periodo.PERIODO_POSTULACION} finalizado y contraseñas actualizadas`);
+        } catch (error) {
+          console.error(`Error procesando periodo ${periodo.PERIODO_POSTULACION}:`, error);
+          // Remover el periodo del set en caso de error
+          periodosEnProceso.delete(periodo.PERIODO_POSTULACION);
+          throw error;
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error('Error en verificación de periodos:', error);
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error('Error en rollback:', rollbackError);
+      }
+    }
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error('Error cerrando conexión:', closeError);
+      }
+    }
+  }
+}
+
+// Iniciar verificación periódica cada segundo
+setInterval(verificarPeriodosYActualizarContrasenas, 1000);
