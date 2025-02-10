@@ -533,6 +533,7 @@ app.post('/login', async (req, res) => {
           <script>
             localStorage.setItem('rol', '${role}');
             localStorage.setItem('usuario', '${usuario}');
+            localStorage.setItem('contrasenaHash', '${contrasenaHash}');
 
             if (${role} === 1) {
               window.location.href = '/html/configuracion.html';
@@ -2286,3 +2287,56 @@ async function verificarPeriodosYActualizarContrasenas() {
 
 // Iniciar verificación periódica cada segundo
 setInterval(verificarPeriodosYActualizarContrasenas, 1000);
+
+// Ruta para verificar usuario y contraseña
+app.get('/verificar-usuario', async (req, res) => {
+  const { usuario, contrasenaHash } = req.query;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    
+    const result = await connection.execute(
+      `SELECT COUNT(*) AS EXISTE
+       FROM USUARIOS 
+       WHERE ID_US = :usuario 
+       AND CONTRASENA_US = :contrasenaHash
+       AND ESTADO_US = 1`,
+      [usuario, contrasenaHash]
+    );
+
+    const existe = result.rows[0][0] > 0;
+    await connection.close();
+
+    res.json({ existe });
+  } catch (error) {
+    console.error('Error al verificar usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Ruta para verificar si el usuario es administrador
+app.get('/verificar-administrador', async (req, res) => {
+  const { usuario, contrasenaHash } = req.query;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    
+    const result = await connection.execute(
+      `SELECT COUNT(*) AS EXISTE
+       FROM USUARIOS 
+       WHERE ID_US = :usuario 
+       AND CONTRASENA_US = :contrasenaHash
+       AND ESTADO_US = 1
+       AND ID_ROL = '1'`,
+      [usuario, contrasenaHash]
+    );
+
+    const existe = result.rows[0][0] > 0;
+    await connection.close();
+
+    res.json({ existe });
+  } catch (error) {
+    console.error('Error al verificar administrador:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});

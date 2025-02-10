@@ -141,7 +141,37 @@
     <script src="../assets/js/main.js"></script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
+        document.addEventListener("DOMContentLoaded", async function () {
+            const usuario = localStorage.getItem('usuario');
+            const contrasenaHash = localStorage.getItem('contrasenaHash');
+
+            // Verificar si hay usuario y contraseña
+            if (usuario && contrasenaHash) {
+                try {
+                    // Verificar si el usuario es administrador
+                    const response = await fetch(`/verificar-administrador?usuario=${usuario}&contrasenaHash=${contrasenaHash}`);
+                    const data = await response.json();
+
+                    if (!data.existe) {
+                        alert('No tiene permisos para acceder a esta página o su sesión ha expirado.');
+                        localStorage.clear();
+                        window.location.href = '/';
+                        return;
+                    }
+
+                    // Si el usuario es administrador válido, actualizar el display
+                    document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+                } catch (error) {
+                    console.error('Error:', error);
+                    localStorage.clear();
+                    window.location.href = '/';
+                    return;
+                }
+            } else {
+                window.location.href = '/';
+                return;
+            }
+
             const auditoriaForm = document.getElementById('auditoriaForm');
             const periodoSelect = document.getElementById('periodoSelect');
             fetch('/api/periodos')
@@ -200,30 +230,6 @@
             } else {
                 console.error("Elemento con ID 'auditoriaForm' no encontrado.");
             }
-        });
-
-
-        document.addEventListener('DOMContentLoaded', (event) => {
-            const usuario = localStorage.getItem('usuario');
-            const rol = localStorage.getItem('rol');
-
-            // Verificar si el usuario tiene permiso (rol 1)
-            if (!rol || rol !== '1') {
-                window.location.href = '/';
-                return;
-            }
-
-            // Actualizar el nombre de usuario en el display
-            if (usuario) {
-                document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
-            }
-
-            // Manejar el cierre de sesión
-            document.getElementById('logout-button').addEventListener('click', function() {
-                localStorage.removeItem('rol');
-                localStorage.removeItem('usuario');
-                window.location.href = '/';
-            });
         });
 
         document.getElementById('searchInput').addEventListener('keyup', function() {

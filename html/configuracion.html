@@ -150,19 +150,150 @@
   <script src="../assets/js/main.js"></script>
 
   <script>
-    document.addEventListener('DOMContentLoaded', (event) => {
+    document.addEventListener('DOMContentLoaded', async function() {
       const usuario = localStorage.getItem('usuario');
-      const rol = localStorage.getItem('rol');
+      const contrasenaHash = localStorage.getItem('contrasenaHash');
 
-      // Verificar si el usuario tiene permiso (rol 1)
-      if (!rol || rol !== '1') {
+      // Verificar si hay usuario y contraseña
+      if (usuario && contrasenaHash) {
+        try {
+          // Verificar si el usuario es administrador
+          const response = await fetch(`/verificar-administrador?usuario=${usuario}&contrasenaHash=${contrasenaHash}`);
+          const data = await response.json();
+
+          if (!data.existe) {
+            alert('No tiene permisos para acceder a esta página o su sesión ha expirado.');
+            localStorage.clear();
+            window.location.href = '/';
+            return;
+          }
+
+          // Si el usuario es administrador válido, actualizar el display
+          document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+        } catch (error) {
+          console.error('Error:', error);
+          localStorage.clear();
+          window.location.href = '/';
+          return;
+        }
+      } else {
         window.location.href = '/';
         return;
       }
 
-      // Actualizar el nombre de usuario en el display
-      if (usuario) {
-        document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+      // Manejar el cierre de sesión
+      document.getElementById('logout-button').addEventListener('click', function() {
+        localStorage.clear();
+        window.location.href = '/';
+      });
+
+      // Verificar si estamos regresando desde la página de votación
+      const regresandoDeVotacion = localStorage.getItem('regresandoDeVotacion');
+      if (regresandoDeVotacion === 'true') {
+        // Limpiar el flag
+        localStorage.removeItem('regresandoDeVotacion');
+        
+        // Cargar los datos guardados
+        const formDataStr = localStorage.getItem('formDataCompleto');
+        if (formDataStr) {
+          try {
+            const formData = JSON.parse(formDataStr);
+            
+            // Rellenar el formulario inicial pero mantenerlo oculto
+            document.getElementById('periodo').value = formData.periodo;
+            document.getElementById('numListas').value = formData.listas.length;
+            document.getElementById('fechaPublicacion').value = formData.fechaPublicacion;
+            document.getElementById('horaInicio').value = formData.horaInicio;
+            document.getElementById('horaFin').value = formData.horaFin;
+
+            // Disparar el evento submit del formulario inicial para generar el segundo formulario
+            const submitEvent = new SubmitEvent('submit', {
+              bubbles: true,
+              cancelable: true
+            });
+            document.getElementById('initialForm').dispatchEvent(submitEvent);
+
+            // Esperar a que se genere el segundo formulario y luego rellenarlo
+            setTimeout(() => rellenarSegundoFormulario(formData), 1000);
+          } catch (error) {
+            console.error('Error al cargar datos guardados:', error);
+          }
+        }
+      }
+
+      // Función para rellenar el segundo formulario con los datos guardados
+      async function rellenarSegundoFormulario(formData) {
+        try {
+          // Obtener usuarios y nombres para rellenar los selectores
+          const responseNames = await fetch('/api/usuarios');
+          const usuarios = await responseNames.json();
+          
+          // Rellenar datos de las listas
+          for (let i = 0; i < formData.listas.length; i++) {
+            const lista = formData.listas[i];
+            
+            // Rellenar nombre de la lista
+            const nombreListaElement = document.getElementById(`nombreLista${i + 1}`);
+            if (nombreListaElement) {
+              nombreListaElement.value = lista.nombreLista;
+            }
+
+            // Rellenar dignidades principales
+            const dignidades = {
+              presidente: lista.presidente,
+              vicepresidente: lista.vicepresidente,
+              secretario: lista.secretario,
+              tesorero: lista.tesorero,
+              sindico: lista.sindico
+            };
+
+            for (const [dignidad, valor] of Object.entries(dignidades)) {
+              const selectElement = document.getElementById(`${dignidad}Lista${i + 1}`);
+              if (selectElement) {
+                // Asegurarse de que todas las opciones estén disponibles
+                usuarios.forEach(user => {
+                  const option = document.createElement('option');
+                  option.value = user.id;
+                  option.text = `${user.nombres} ${user.apellidos}`;
+                  selectElement.appendChild(option);
+                });
+                selectElement.value = valor;
+              }
+            }
+
+            // Rellenar vocales principales
+            lista.vocalesPrincipales.forEach((vocal, index) => {
+              const vocalElement = document.getElementById(`vocalPrincipal${index + 1}Lista${i + 1}`);
+              if (vocalElement) {
+                // Agregar todas las opciones
+                usuarios.forEach(user => {
+                  const option = document.createElement('option');
+                  option.value = user.id;
+                  option.text = `${user.nombres} ${user.apellidos}`;
+                  vocalElement.appendChild(option);
+                });
+                vocalElement.value = vocal;
+              }
+            });
+
+            // Rellenar vocales suplentes
+            lista.vocalesSuplentes.forEach((vocal, index) => {
+              const vocalElement = document.getElementById(`vocalSuplente${index + 1}Lista${i + 1}`);
+              if (vocalElement) {
+                // Agregar todas las opciones
+                usuarios.forEach(user => {
+                  const option = document.createElement('option');
+                  option.value = user.id;
+                  option.text = `${user.nombres} ${user.apellidos}`;
+                  vocalElement.appendChild(option);
+                });
+                vocalElement.value = vocal;
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error al rellenar el segundo formulario:', error);
+        }
       }
 
       // Configurar las fechas mínima y máxima permitidas
@@ -183,13 +314,6 @@
       const fechaMinima = formatDate(hoy);
       fechaPublicacion.setAttribute('min', fechaMinima);
       fechaPublicacion.setAttribute('max', formatDate(maxDate));
-
-      // Manejar el cierre de sesión
-      document.getElementById('logout-button').addEventListener('click', function() {
-        localStorage.removeItem('rol');
-        localStorage.removeItem('usuario');
-        window.location.href = '/';
-      });
     });
 
     document.getElementById('initialForm').addEventListener('submit', function(event) {
@@ -390,6 +514,7 @@
             };
 
             // Guardar en localStorage
+            localStorage.removeItem('formDataCompleto');
             localStorage.setItem('formDataCompleto', JSON.stringify(formDataCompleto));
 
             // Redirigir a la página de previsualización

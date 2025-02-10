@@ -179,20 +179,37 @@
     document.addEventListener('DOMContentLoaded', () => {
       const rol = localStorage.getItem('rol');
       const usuario = localStorage.getItem('usuario');
+      const contrasenaHash = localStorage.getItem('contrasenaHash');
       const urlParams = new URLSearchParams(window.location.search);
       const periodo = urlParams.get('periodo');
 
-      // Verificar si hay usuario y actualizar el display
-      if (usuario) {
-        document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+      // Verificar si hay usuario y contraseña
+      if (usuario && contrasenaHash) {
+        // Verificar usuario con el servidor
+        fetch(`/verificar-usuario?usuario=${usuario}&contrasenaHash=${contrasenaHash}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.existe) {
+              // Usuario válido, actualizar display
+              document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+            } else {
+              // Usuario inválido, redirigir al login
+              localStorage.clear();
+              window.location.href = `/?periodo=${periodo}`;
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            localStorage.clear();
+            window.location.href = `/?periodo=${periodo}`;
+          });
       } else {
         window.location.href = `/?periodo=${periodo}`;
       }
 
       // Manejar el cierre de sesión
       document.getElementById('logout-button').addEventListener('click', function() {
-        localStorage.removeItem('rol');
-        localStorage.removeItem('usuario');
+        localStorage.clear();
         window.location.href = `/?periodo=${periodo}`;
       });
 
@@ -422,10 +439,23 @@
       // Evento para confirmar el voto después de aceptar los términos
       document.getElementById('confirmVote').addEventListener('click', async function() {
         const acceptAudit = document.getElementById('acceptAudit').checked;
-
+        const usuario = localStorage.getItem('usuario');
+        const contrasenaHash = localStorage.getItem('contrasenaHash');
+        const periodo = urlParams.get('periodo');
 
         try {
-          const usuario = localStorage.getItem('usuario');
+          // Primero verificar si el usuario sigue siendo válido
+          const verificacionResponse = await fetch(`/verificar-usuario?usuario=${usuario}&contrasenaHash=${contrasenaHash}`);
+          const verificacionData = await verificacionResponse.json();
+
+          if (!verificacionData.existe) {
+            alert('Su sesión ha expirado o sus credenciales no son válidas. Por favor, inicie sesión nuevamente.');
+            localStorage.clear();
+            window.location.href = `/?periodo=${periodo}`;
+            return;
+          }
+
+          // Si el usuario es válido, continuar con el proceso de votación
           const selectedRadio = document.querySelector('input[name="lista"]:checked');
           const listaseleccionada = selectedRadio.value;
           const nombreLista = selectedRadio.dataset.nombreLista;
@@ -454,7 +484,7 @@
           window.location.reload();
         } catch (error) {
           console.error('Error:', error);
-          alert('Error al guardar los votos');
+          alert('Error al procesar el voto');
         }
       });
 

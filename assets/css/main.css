@@ -1980,7 +1980,7 @@ section,
 }
 
 /* Adjust dropdown items in mobile view */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1199px) {
   .navmenu .dropdown ul {
     position: static;
     box-shadow: none;
@@ -2013,7 +2013,7 @@ section,
 }
 
 /* Para pantallas pequeñas, se ajusta la visibilidad del menú */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1199px) {
   .mobile-nav-toggle {
     display: block;
     position: absolute;

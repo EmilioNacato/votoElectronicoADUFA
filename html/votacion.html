@@ -100,6 +100,42 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', async function() {
+      const usuario = localStorage.getItem('usuario');
+      const contrasenaHash = localStorage.getItem('contrasenaHash');
+
+      // Verificar si hay usuario y contraseña
+      if (usuario && contrasenaHash) {
+        try {
+          // Verificar si el usuario es administrador
+          const response = await fetch(`/verificar-administrador?usuario=${usuario}&contrasenaHash=${contrasenaHash}`);
+          const data = await response.json();
+
+          if (!data.existe) {
+            alert('No tiene permisos para acceder a esta página o su sesión ha expirado.');
+            localStorage.clear();
+            window.location.href = '/';
+            return;
+          }
+
+          // Si el usuario es administrador válido, actualizar el display
+          document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
+        } catch (error) {
+          console.error('Error:', error);
+          localStorage.clear();
+          window.location.href = '/';
+          return;
+        }
+      } else {
+        window.location.href = '/';
+        return;
+      }
+
+      // Manejar el cierre de sesión
+      document.getElementById('logout-button').addEventListener('click', function() {
+        localStorage.clear();
+        window.location.href = '/';
+      });
+
       console.log('Cargando datos de formDataCompleto...');
       const formDataStr = localStorage.getItem('formDataCompleto');
       console.log('Datos en localStorage:', formDataStr);
@@ -127,7 +163,7 @@
         });
 
         // Obtener nombres completos de la base de datos
-        const response = await fetch('/obtener-nombres-usuarios', {
+        const responseNames = await fetch('/obtener-nombres-usuarios', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -135,11 +171,11 @@
           body: JSON.stringify({ usuarios: Array.from(usuarios) })
         });
 
-        if (!response.ok) {
+        if (!responseNames.ok) {
           throw new Error('Error al obtener nombres de usuarios');
         }
 
-        const { nombres } = await response.json();
+        const { nombres } = await responseNames.json();
 
         // Generar campos de radio para cada nombre
         const checkboxesContainer = document.getElementById('checkboxesContainer');
@@ -235,6 +271,8 @@
 
     // Evento para regresar al formulario anterior
     document.getElementById('backButton').addEventListener('click', function() {
+      // Agregar un flag para indicar que estamos regresando desde la previsualización
+      localStorage.setItem('regresandoDeVotacion', 'true');
       window.location.href = '/html/configuracion.html';
     });
 
@@ -327,20 +365,6 @@
         console.error('Error en MensajeGeneracion:', error);
       }
     }
-
-    // Manejo de sesión
-    document.addEventListener('DOMContentLoaded', function() {
-      const usuario = localStorage.getItem('usuario');
-      if (usuario) {
-        document.getElementById('username-display').innerHTML = `${usuario} <i class="bi bi-chevron-down toggle-dropdown"></i>`;
-      }
-
-      document.getElementById('logout-button').addEventListener('click', function() {
-        localStorage.removeItem('rol');
-        localStorage.removeItem('usuario');
-        window.location.href = '/';
-      });
-    });
   </script>
 </body>
 </html>
