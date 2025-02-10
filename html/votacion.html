@@ -187,13 +187,14 @@
             <hr>
             <br>
             <div class="radio-tile-group">
-              <div class="form-check-inline col-md-1"></div>
-              <div class="form-check-inline col-md-10">
-                <input class="radio-button-nulo" type="radio" id="nulo" name="lista" value="NULO">
+              <div class="form-check-inline col-md-4">
+                <input class="radio-button-nulo" type="radio" id="nulo" name="lista" value="nulo" data-nombre-lista="nulo">
                 <label class="btn-nulo" for="nulo"> VOTAR NULO</label>
               </div>
-              <div class="form-check-inline col-md-1"></div>
-            </div>
+              <div class="form-check-inline col-md-4">
+                <input class="radio-button-nulo" type="radio" id="blanco" name="lista" value="blanco" data-nombre-lista="blanco">
+                <label class="btn-nulo" for="blanco"> VOTAR BLANCO</label>
+              </div>
         `;
 
         formDataCompleto.listas.forEach((lista, index) => {
@@ -241,13 +242,13 @@
                   </div>
                   <div class="row mt-3">
                     <div class="col-12 col-md-6 mb-3">
-                      <h5 class="mb-2">Vocales Principales:</h5>
+                      <h5 class="mb-2" style="color: var(--accent-color); font-weight: bold;">Vocales Principales:</h5>
                       <div class="mb-1"><span class="lista-item">Vocal Principal 1:</span> ${nombres[lista.vocalesPrincipales[0]]}</div>
                       <div class="mb-1"><span class="lista-item">Vocal Principal 2:</span> ${nombres[lista.vocalesPrincipales[1]]}</div>
                       <div class="mb-1"><span class="lista-item">Vocal Principal 3:</span> ${nombres[lista.vocalesPrincipales[2]]}</div>
                     </div>
                     <div class="col-12 col-md-6 mb-3">
-                      <h5 class="mb-2">Vocales Suplentes:</h5>
+                      <h5 class="mb-2" style="color: var(--accent-color); font-weight: bold;">Vocales Suplentes:</h5>
                       <div class="mb-1"><span class="lista-item">Vocal Suplente 1:</span> ${nombres[lista.vocalesSuplentes[0]]}</div>
                       <div class="mb-1"><span class="lista-item">Vocal Suplente 2:</span> ${nombres[lista.vocalesSuplentes[1]]}</div>
                       <div class="mb-1"><span class="lista-item">Vocal Suplente 3:</span> ${nombres[lista.vocalesSuplentes[2]]}</div>
@@ -257,6 +258,7 @@
               </div>
               <br>
             </div>
+          </div>
           `;
           checkboxesContainer.innerHTML += listaHtml;
         });
