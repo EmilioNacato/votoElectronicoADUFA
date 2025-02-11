@@ -913,7 +913,7 @@ app.post('/guardar-votos', async (req, res) => {
           idLista: id_lista,
           nombreLista: nombreLista,
           periodoPostulacion: period,
-          idUs: usuario,
+          idUs: usuarioHash,
           fechaVotacion: new Date().toISOString(),
           aceptaAuditoria: aceptaAuditoria
         })
