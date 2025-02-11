@@ -905,7 +905,7 @@ app.post('/guardar-votos', async (req, res) => {
     // Llamada a la Blockchain platform de OCI
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
-      chaincode: "data_synchronization_votos_v10",
+      chaincode: "data_synchronization_votos_v11",
       args: [
         "createVotosListas",
         JSON.stringify({
@@ -1681,7 +1681,7 @@ app.get('/api/resultados/blockchain', async (req, res) => {
   try {
     const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
-      chaincode: "data_synchronization_votos_v10",
+      chaincode: "data_synchronization_votos_v11",
       args: [
         "getVotesByRange",
         "",
