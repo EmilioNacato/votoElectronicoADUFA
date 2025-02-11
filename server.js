@@ -34,7 +34,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const fieldname = file.fieldname;
-    const fieldMatch = fieldname.match(/(fotoPresidenteLISTA|fotoVicepresidenteLISTA)(\d+)/);
+    const fieldMatch = fieldname.match(/(fotoPresidenteLista|fotoVicepresidenteLista)(\d+)/);
 
     if (fieldMatch) {
       const [ , type, index ] = fieldMatch;
@@ -685,7 +685,7 @@ app.post('/guardar-candidatos', async (req, res) => {
 
     // Procesar cada lista
     for (const [index, lista] of formData.listas.entries()) {
-      const id_lista = `LISTA${index + 1}`;
+      const id_lista = `Lista${index + 1}`;
       console.log(`Procesando ${id_lista}:`, lista);
       
       // Verificar si la lista ya existe
