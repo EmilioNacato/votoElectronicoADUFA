@@ -331,24 +331,10 @@
                     data.ganadores.candidatos.forEach(candidato => {
                       if (candidato.dignidad === 'presidente') {
                         document.getElementById('nombrePresidente').textContent = candidato.nombre;
-                        const imgPresidente = document.getElementById('fotoPresidente');
-                        console.log('Intentando cargar imagen de presidente:', candidato.foto);
-                        imgPresidente.onerror = function() {
-                          console.log('Error al cargar imagen de presidente, usando imagen por defecto');
-                          this.onerror = null;
-                          this.src = '../assets/img/fotosListas/defaultCandidato.png';
-                        };
-                        imgPresidente.src = candidato.foto;
+                        document.getElementById('fotoPresidente').src = candidato.foto;
                       } else if (candidato.dignidad === 'vicepresidente') {
                         document.getElementById('nombreVicepresidente').textContent = candidato.nombre;
-                        const imgVicepresidente = document.getElementById('fotoVicepresidente');
-                        console.log('Intentando cargar imagen de vicepresidente:', candidato.foto);
-                        imgVicepresidente.onerror = function() {
-                          console.log('Error al cargar imagen de vicepresidente, usando imagen por defecto');
-                          this.onerror = null;
-                          this.src = '../assets/img/fotosListas/defaultCandidato.png';
-                        };
-                        imgVicepresidente.src = candidato.foto;
+                        document.getElementById('fotoVicepresidente').src = candidato.foto;
                       }
                     });
                     
