@@ -200,7 +200,7 @@
         formDataCompleto.listas.forEach((lista, index) => {
           let listaHtml = `
             <div class="input-container form-check-inline">
-              <input class="radio-button" type="radio" id="lista${index + 1}" name="lista" value="${index}">&nbsp&nbsp
+              <input class="radio-button" type="radio" id="lista${index + 1}" name="lista" value="Lista${index + 1}" data-nombre-lista="${lista.nombreLista}">&nbsp&nbsp
               <div class="radio-tile">
                 <h4 style="color: var(--accent-color); padding-top: 15px; font-weight: bold;">Lista ${index + 1} - ${lista.nombreLista}</h4>
                 <hr>
