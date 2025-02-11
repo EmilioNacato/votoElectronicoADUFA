@@ -2266,19 +2266,6 @@ async function verificarPeriodosYActualizarContrasenas() {
       const pasaronHoraFin = minutosActuales > minutosFinVotacion || 
                             (minutosActuales === minutosFinVotacion && horaActualSS > 0);
 
-      // Agregar logs para debug
-      console.log('=== Verificación de horario ===');
-      console.log('Periodo:', periodo.PERIODO_POSTULACION);
-      console.log('Fecha votación:', periodo.FECHA_VOTACION);
-      console.log('Fecha actual:', fechaActual);
-      console.log('Hora actual:', horaActual);
-      console.log('Hora fin:', periodo.HORA_FIN);
-      console.log('Minutos actuales:', minutosActuales);
-      console.log('Minutos fin votación:', minutosFinVotacion);
-      console.log('Es hoy:', esHoy);
-      console.log('Pasaron hora fin:', pasaronHoraFin);
-      console.log('Hora actual Oracle:', periodo.hora_actual_oracle);
-      console.log('============================');
 
       if (esHoy && pasaronHoraFin) {
         // Marcar el periodo como en proceso
