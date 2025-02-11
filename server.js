@@ -2036,11 +2036,11 @@ app.post('/api/usuarios-crud/upload', uploadDocumentos.single('file'), async (re
         // Verificar si el ID ya existe y agregar número si es necesario
         let counter = 1;
         let finalId = id_us;
-        let baseId = idUs;
+        let baseId = id_us;
         let startingNumber = 1;
 
         // Extraer el número del final del ID si existe
-        const matches = idUs.match(/^([a-zA-Z]+)(\d+)$/);
+        const matches = id_us.match(/^([a-zA-Z]+)(\d+)$/);
         if (matches) {
           baseId = matches[1];
           startingNumber = parseInt(matches[2]);
@@ -2054,13 +2054,13 @@ app.post('/api/usuarios-crud/upload', uploadDocumentos.single('file'), async (re
 
         if (existingIds.rows.length === 0) {
           // No existe ningún ID con este patrón
-          finalId = idUs;
+          finalId = id_us;
         } else {
           // Verificar si el ID exacto ya existe
           const exactMatch = existingIds.rows.find(row => row[0] === finalId);
           if (!exactMatch) {
             // Si el ID exacto no existe, podemos usarlo
-            finalId = idUs;
+            finalId = id_us;
           } else {
             // Crear un conjunto de números ya usados
             const numerosUsados = new Set();
@@ -2100,7 +2100,8 @@ app.post('/api/usuarios-crud/upload', uploadDocumentos.single('file'), async (re
           throw new Error(`El rol "${id_rol}" no existe en la base de datos`);
         }
 
-        const contrasenaUsHash = hashPassword(record.CONTRASENA_US);
+        // Hashear la contraseña antes de guardarla
+        const contrasenaUsHash = await hashPassword(record.CONTRASENA_US);
 
         // Insertar usuario con todos los campos requeridos
         await connection.execute(
