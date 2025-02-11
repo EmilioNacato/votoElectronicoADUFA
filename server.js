@@ -1786,17 +1786,18 @@ app.get('/verificar-horario', async (req, res) => {
   try {
     const connection = await oracledb.getConnection(dbConfig);
     
-    // Obtener la fecha y hora actual de Oracle usando el timezone de US East (Ashburn)
+    // Obtener la fecha y hora actual de Oracle usando el timezone correcto
     const timeResult = await connection.execute(
       `SELECT 
-        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'America/New_York', 'DD/MM/YYYY') as fecha_actual,
-        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'America/New_York', 'HH24:MI') as hora_actual
+        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'US/Eastern', 'DD/MM/YYYY') as fecha_actual,
+        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'US/Eastern', 'HH24:MI:SS') as hora_actual
        FROM DUAL`
     );
 
     const fechaActual = timeResult.rows[0][0];
     const horaActual = timeResult.rows[0][1];
 
+    console.log('=== Verificación de horario de votación ===');
     console.log('Fecha actual Oracle (US East):', fechaActual);
     console.log('Hora actual Oracle (US East):', horaActual);
 
@@ -1804,7 +1805,8 @@ app.get('/verificar-horario', async (req, res) => {
     const configResult = await connection.execute(
       `SELECT TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
               HORA_INICIO,
-              HORA_FIN
+              HORA_FIN,
+              TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'US/Eastern', 'HH24:MI:SS') as hora_actual_oracle
        FROM CONFIGURACION_VOTACION 
        WHERE PERIODO_POSTULACION = :periodo`,
       [periodo]
@@ -1820,6 +1822,7 @@ app.get('/verificar-horario', async (req, res) => {
     const fechaVotacion = configResult.rows[0][0];
     const horaInicio = configResult.rows[0][1];
     const horaFin = configResult.rows[0][2];
+    const horaActualOracle = configResult.rows[0][3];
 
     // Convertir fechas a objetos Date para comparación
     const [diaVot, mesVot, anioVot] = fechaVotacion.split('/');
@@ -1829,7 +1832,7 @@ app.get('/verificar-horario', async (req, res) => {
     const fechaActObj = new Date(anioAct, mesAct - 1, diaAct);
 
     // Convertir horas a minutos para comparación
-    const [horaActualHH, horaActualMM] = horaActual.split(':').map(Number);
+    const [horaActualHH, horaActualMM, horaActualSS] = horaActual.split(':').map(Number);
     const minutosActuales = horaActualHH * 60 + horaActualMM;
 
     const [horaInicioHH, horaInicioMM] = horaInicio.split(':').map(Number);
@@ -1845,6 +1848,8 @@ app.get('/verificar-horario', async (req, res) => {
     console.log('Hora fin:', horaFin);
     console.log('Minutos actuales:', minutosActuales);
     console.log('Rango permitido:', minutosInicio, 'a', minutosFinVotacion);
+    console.log('Hora actual Oracle:', horaActualOracle);
+    console.log('============================');
 
     // Verificar si estamos en el día correcto
     const esHoy = fechaActObj.getFullYear() === fechaVotObj.getFullYear() &&
@@ -2212,8 +2217,8 @@ async function verificarPeriodosYActualizarContrasenas() {
     // Obtener la hora actual de Oracle en timezone correcto
     const timeResult = await connection.execute(
       `SELECT 
-        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'America/New_York', 'DD/MM/YYYY') as fecha_actual,
-        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'America/New_York', 'HH24:MI:SS') as hora_actual
+        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'US/Eastern', 'DD/MM/YYYY') as fecha_actual,
+        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'US/Eastern', 'HH24:MI:SS') as hora_actual
        FROM DUAL`
     );
 
@@ -2225,7 +2230,8 @@ async function verificarPeriodosYActualizarContrasenas() {
       `SELECT 
         PERIODO_POSTULACION,
         TO_CHAR(FECHA_PUBLICACION, 'DD/MM/YYYY') as fecha_votacion,
-        HORA_FIN
+        HORA_FIN,
+        TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'US/Eastern', 'HH24:MI:SS') as hora_actual_oracle
        FROM CONFIGURACION_VOTACION 
        WHERE ESTADO_PERIODO = 1`,
       [],
@@ -2259,6 +2265,20 @@ async function verificarPeriodosYActualizarContrasenas() {
       
       const pasaronHoraFin = minutosActuales > minutosFinVotacion || 
                             (minutosActuales === minutosFinVotacion && horaActualSS > 0);
+
+      // Agregar logs para debug
+      console.log('=== Verificación de horario ===');
+      console.log('Periodo:', periodo.PERIODO_POSTULACION);
+      console.log('Fecha votación:', periodo.FECHA_VOTACION);
+      console.log('Fecha actual:', fechaActual);
+      console.log('Hora actual:', horaActual);
+      console.log('Hora fin:', periodo.HORA_FIN);
+      console.log('Minutos actuales:', minutosActuales);
+      console.log('Minutos fin votación:', minutosFinVotacion);
+      console.log('Es hoy:', esHoy);
+      console.log('Pasaron hora fin:', pasaronHoraFin);
+      console.log('Hora actual Oracle:', periodo.hora_actual_oracle);
+      console.log('============================');
 
       if (esHoy && pasaronHoraFin) {
         // Marcar el periodo como en proceso
