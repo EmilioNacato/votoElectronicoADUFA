@@ -1841,16 +1841,6 @@ app.get('/verificar-horario', async (req, res) => {
     const [horaFinHH, horaFinMM] = horaFin.split(':').map(Number);
     const minutosFinVotacion = horaFinHH * 60 + horaFinMM;
 
-    console.log('Fecha votación:', fechaVotacion);
-    console.log('Fecha actual:', fechaActual);
-    console.log('Hora actual:', horaActual);
-    console.log('Hora inicio:', horaInicio);
-    console.log('Hora fin:', horaFin);
-    console.log('Minutos actuales:', minutosActuales);
-    console.log('Rango permitido:', minutosInicio, 'a', minutosFinVotacion);
-    console.log('Hora actual Oracle:', horaActualOracle);
-    console.log('============================');
-
     // Verificar si estamos en el día correcto
     const esHoy = fechaActObj.getFullYear() === fechaVotObj.getFullYear() &&
                  fechaActObj.getMonth() === fechaVotObj.getMonth() &&
