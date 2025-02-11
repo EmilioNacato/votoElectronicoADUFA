@@ -685,7 +685,7 @@ app.post('/guardar-candidatos', async (req, res) => {
 
     // Procesar cada lista
     for (const [index, lista] of formData.listas.entries()) {
-      const id_lista = `Lista${index + 1}`;
+      const id_lista = `LISTA${index + 1}`;
       console.log(`Procesando ${id_lista}:`, lista);
       
       // Verificar si la lista ya existe
@@ -1176,7 +1176,7 @@ app.get('/api/resultados', async (req, res) => {
         candidatos: candidatosResult.rows.map(row => ({
           dignidad: row.DIGNIDAD_CAND,
           nombre: `${row.NOMBRE_US} ${row.APELLIDO_US}`,
-          foto: `../assets/img/fotosListas/foto${row.DIGNIDAD_CAND.charAt(0).toUpperCase() + row.DIGNIDAD_CAND.slice(1)}Lista${listaGanadora.idLista.match(/\d+/)[0]}periodo${periodo}.png`
+          foto: `../assets/img/fotosListas/foto${row.DIGNIDAD_CAND.charAt(0).toUpperCase() + row.DIGNIDAD_CAND.slice(1)}${listaGanadora.idLista}periodo${periodo}.png`
         }))
       };
     }
