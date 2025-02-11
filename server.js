@@ -1109,83 +1109,109 @@ app.get('/api/periodos', async (req, res) => {
 // Ruta para obtener los resultados por período
 app.get('/api/resultados', async (req, res) => {
   const periodo = req.query.periodo;
-
+  
   try {
-    const connection = await oracledb.getConnection(dbConfig);
+    // Redirigir a la ruta de blockchain con filterType='lista' por defecto
+    const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
+      chaincode: "data_synchronization_votos_v11",
+      args: [
+        "getVotesByRange",
+        "",
+        "z"
+      ],
+      timeout: 18000,
+      sync: true
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64')}`
+      }
+    });
 
-    // Consulta para obtener el número de votantes únicos
-    const queryNumVotantesUnicos = `
-      SELECT COUNT(DISTINCT v.ID_US) AS NUMERO_VOTANTES_UNICOS
-      FROM VOTOS v
-      WHERE v.PERIODO_POSTULACION = :periodo
-    `;
+    if (blockchainResponse.data.returnCode !== 'Success') {
+      throw new Error(blockchainResponse.data.error || 'Error al obtener datos de blockchain');
+    }
 
-    const resultNumVotantesUnicos = await connection.execute(queryNumVotantesUnicos, [periodo]);
-    const numeroVotantesUnicos = resultNumVotantesUnicos.rows[0][0];
+    const votosBlockchain = blockchainResponse.data.result.payload || [];
+    const votosPeriodo = votosBlockchain.filter(voto => voto.periodoPostulacion === periodo);
+    
+    // Agrupar votos por lista
+    const resultadosPorLista = votosPeriodo.reduce((acc, voto) => {
+      const idLista = voto.idLista;
+      const nombreLista = voto.nombreLista;
+      const key = idLista === 'blanco' ? 'BLANCO' : 
+                 idLista === 'nulo' ? 'NULO' : 
+                 `${idLista} - ${nombreLista}`;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
 
-    // Consulta para obtener los resultados por lista
-    const query = `
-      SELECT l.NOMBRE_LISTA, l.ID_LISTA, COUNT(v.ID_US) AS VOTOS
-      FROM VOTOS v
-      JOIN LISTAS l ON v.ID_LISTA = l.ID_LISTA AND v.PERIODO_POSTULACION = l.PERIODO_POSTULACION
-      WHERE v.PERIODO_POSTULACION = :periodo
-      GROUP BY l.NOMBRE_LISTA, l.ID_LISTA
-      ORDER BY VOTOS DESC
-    `;
+    // Calcular total de votos para porcentajes
+    const totalVotos = Object.values(resultadosPorLista).reduce((sum, count) => sum + count, 0);
 
-    const result = await connection.execute(query, [periodo]);
-    const resultados = [];
+    // Convertir a formato esperado por el frontend
+    const resultados = Object.entries(resultadosPorLista).map(([nombre, votos]) => ({
+      nombre,
+      votos,
+      porcentaje: ((votos / totalVotos) * 100).toFixed(2)
+    }));
+
+    // Encontrar la lista ganadora (excluyendo nulo y blanco)
     let listaGanadora = null;
     let maxVotos = 0;
 
-    // Procesar resultados y encontrar la lista ganadora
-    for (const row of result.rows) {
-      const [nombre, idLista, votos] = row;
-      const porcentaje = ((votos / numeroVotantesUnicos) * 100).toFixed(2);
-      
-      if (nombre.toLowerCase() !== 'nulo' && nombre.toLowerCase() !== 'blanco' && votos > maxVotos) {
-        maxVotos = votos;
-        listaGanadora = { nombre, idLista, votos, porcentaje };
+    resultados.forEach(resultado => {
+      const nombreUpper = resultado.nombre.toUpperCase();
+      if (nombreUpper !== 'NULO' && nombreUpper !== 'BLANCO' && resultado.votos > maxVotos) {
+        maxVotos = resultado.votos;
+        listaGanadora = resultado;
       }
-      
-      resultados.push({ nombre, votos, porcentaje });
-    }
+    });
 
     // Si hay una lista ganadora, obtener información de sus candidatos
     let ganadores = null;
     if (listaGanadora) {
-      const queryCandidatos = `
-        SELECT c.DIGNIDAD_CAND, u.NOMBRE_US, u.APELLIDO_US
-        FROM CANDIDATOS c
-        JOIN USUARIOS u ON c.ID_US = u.ID_US
-        WHERE c.ID_LISTA = :idLista 
-        AND c.PERIODO_POSTULACION = :periodo
-        AND c.DIGNIDAD_CAND IN ('presidente', 'vicepresidente')
-      `;
+      const connection = await oracledb.getConnection(dbConfig);
+      try {
+        const idLista = listaGanadora.nombre.split(' - ')[0];
+        const queryCandidatos = `
+          SELECT c.DIGNIDAD_CAND, u.NOMBRE_US, u.APELLIDO_US
+          FROM CANDIDATOS c
+          JOIN USUARIOS u ON c.ID_US = u.ID_US
+          WHERE c.ID_LISTA = :idLista 
+          AND c.PERIODO_POSTULACION = :periodo
+          AND c.DIGNIDAD_CAND IN ('presidente', 'vicepresidente')
+        `;
 
-      const candidatosResult = await connection.execute(
-        queryCandidatos, 
-        [listaGanadora.idLista, periodo],
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
-      );
+        const candidatosResult = await connection.execute(
+          queryCandidatos, 
+          [idLista, periodo],
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-      ganadores = {
-        lista: listaGanadora.nombre,
-        votos: listaGanadora.votos,
-        porcentaje: listaGanadora.porcentaje,
-        candidatos: candidatosResult.rows.map(row => ({
-          dignidad: row.DIGNIDAD_CAND,
-          nombre: `${row.NOMBRE_US} ${row.APELLIDO_US}`,
-          foto: `../assets/img/fotosListas/foto${row.DIGNIDAD_CAND.charAt(0).toUpperCase() + row.DIGNIDAD_CAND.slice(1)}Lista${listaGanadora.idLista.match(/\d+/)[0]}periodo${periodo}.png`
-        }))
-      };
+        ganadores = {
+          lista: listaGanadora.nombre,
+          votos: listaGanadora.votos,
+          porcentaje: listaGanadora.porcentaje,
+          candidatos: candidatosResult.rows.map(row => ({
+            dignidad: row.DIGNIDAD_CAND,
+            nombre: `${row.NOMBRE_US} ${row.APELLIDO_US}`,
+            foto: `../assets/img/fotosListas/foto${row.DIGNIDAD_CAND.charAt(0).toUpperCase() + row.DIGNIDAD_CAND.slice(1)}Lista${idLista.match(/\d+/)[0]}periodo${periodo}.png`
+          }))
+        };
+      } finally {
+        await connection.close();
+      }
     }
 
-    await connection.close();
     res.json({ resultados, ganadores });
   } catch (err) {
     console.error('Error al obtener los resultados:', err);
-    res.status(500).send('Error al obtener los resultados');
+    res.status(500).json({ 
+      error: true,
+      message: 'Error al obtener los resultados',
+      details: err.message
+    });
   }
 });
 
