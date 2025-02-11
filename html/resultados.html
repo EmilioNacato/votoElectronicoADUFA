@@ -94,6 +94,12 @@
                 <option value="lista" selected>Lista</option>
                 <option value="departamento">Departamento</option>
               </select>
+            </div>
+            <div id="departamentoFilterContainer" class="form-group" style="display: none;"><br>
+              <label for="departamentoSelect">Seleccione Departamento</label><br><br>
+              <select id="departamentoSelect" class="form-control">
+                <option value="" disabled selected>Seleccione un departamento</option>
+              </select>
             </div><br>
             <button type="submit" class="btn btn-danger">Consultar</button>
           </form>
@@ -123,12 +129,12 @@
             </div>
             
             <!-- Gráfica por Lista -->
-            <div id="listaChartContainer" style="width: 400px; height: 300px; margin: auto; display: none;">
+            <div id="listaChartContainer" style="width: 100%; height: 400px; margin: auto; display: none;">
               <canvas id="listaChart"></canvas>
             </div>
             
             <!-- Gráfica por Departamento -->
-            <div id="departamentoChartContainer" style="width: 400px; height: 300px; margin: auto; display: none;">
+            <div id="departamentoChartContainer" style="width: 100%; height: 400px; margin: auto; display: none;">
               <canvas id="departamentoChart"></canvas>
             </div>
           </div>
@@ -208,246 +214,391 @@
         })
         .catch(err => console.error('Error al obtener los periodos:', err));
 
-        document.getElementById('resultForm').addEventListener('submit', function(event) {
-          event.preventDefault();
-          
-          const periodo = document.getElementById('periodoSelect').value;
-          const filterType = document.getElementById('filterTypeSelect').value;
-          const resultContainer = document.getElementById('resultContainer');
-          const resultTable = document.getElementById('resultTable');
-          const periodoHeader = document.getElementById('periodoHeader');
-          const ganadoresContainer = document.getElementById('ganadoresContainer');
-          
-          const listaChartContainer = document.getElementById('listaChartContainer');
-          const departamentoChartContainer = document.getElementById('departamentoChartContainer');
-
-          if (periodo) {
-            let apiUrl = filterType === 'lista' 
-              ? `/api/resultados?periodo=${periodo}`
-              : `/api/resultados/departamento?periodo=${periodo}`;
-            
-            fetch(apiUrl)
-              .then(response => response.json())
-              .then(data => {
-                periodoHeader.textContent = `Resultados para el periodo ${periodo}`;
-                
-                if (filterType === 'lista') {
-                  // Mostrar tabla de resultados
-                  resultTable.innerHTML = generateResultsHtml(data.resultados);
-                  
-                  // Verificar si hay ganador único y no hay nulos mayoritarios
-                  const listasNormales = data.resultados.filter(lista => !['NULO', 'BLANCO'].includes(lista.nombre.toUpperCase()));
-                  const listaNulo = data.resultados.find(lista => lista.nombre.toUpperCase() === 'NULO');
-                  const maxVotos = Math.max(...listasNormales.map(lista => lista.votos));
-                  const listasGanadoras = listasNormales.filter(lista => lista.votos === maxVotos);
-                  
-                  // Solo mostrar ganador si hay un único ganador y los nulos no son mayoría
-                  if (listasGanadoras.length === 1 && (!listaNulo || listaNulo.votos <= maxVotos)) {
-                    if (data.ganadores) {
-                      document.getElementById('nombreListaGanadora').textContent = `${data.ganadores.lista} - ${data.ganadores.porcentaje}% de los votos`;
-                      
-                      // Mostrar información de los candidatos
-                      data.ganadores.candidatos.forEach(candidato => {
-                        if (candidato.dignidad === 'presidente') {
-                          document.getElementById('nombrePresidente').textContent = candidato.nombre;
-                          document.getElementById('fotoPresidente').src = candidato.foto;
-                        } else if (candidato.dignidad === 'vicepresidente') {
-                          document.getElementById('nombreVicepresidente').textContent = candidato.nombre;
-                          document.getElementById('fotoVicepresidente').src = candidato.foto;
-                        }
-                      });
-                      
-                      ganadoresContainer.style.display = 'block';
-                    }
-                  } else {
-                    ganadoresContainer.style.display = 'none';
-                  }
-                  
-                  listaChartContainer.style.display = 'block';
-                  departamentoChartContainer.style.display = 'none';
-                  createChart(data.resultados, 'lista');
-                } else {
-                  resultTable.innerHTML = generateResultsHtml(data, 'departamento');
-                  ganadoresContainer.style.display = 'none';
-                  listaChartContainer.style.display = 'none';
-                  departamentoChartContainer.style.display = 'block';
-                  createChart(data, 'departamento');
-                }
-                
-                resultContainer.style.display = 'block';
-              })
-              .catch(err => console.error('Error al obtener los resultados:', err));
-          }
-        });
-
-        function generateResultsHtml(data, filterType = 'lista') {
-          let html = '<table class="table table-bordered table-striped table-hover">';
-          
-          if (filterType === 'lista') {
-            const listasNormales = data.filter(lista => !['NULO', 'BLANCO'].includes(lista.nombre.toUpperCase()));
-            const listaNulo = data.find(lista => lista.nombre.toUpperCase() === 'NULO');
-            const listaBlanco = data.find(lista => lista.nombre.toUpperCase() === 'BLANCO');
-
-            html += `
-              <thead class="table-dark">
-                <tr>
-                  <th>Lista</th>
-                  <th>Votos</th>
-                  <th>Porcentaje</th>
-                </tr>
-              </thead>
-              <tbody>`;
-
-            listasNormales.forEach(lista => {
-              html += `
-                <tr>
-                  <td>${lista.nombre}</td>
-                  <td>${lista.votos}</td>
-                  <td>${lista.porcentaje}%</td>
-                </tr>`;
+      // Función para cargar departamentos
+      function cargarDepartamentos(periodo) {
+        if (!periodo) return;
+        
+        fetch(`/api/departamentos?periodo=${periodo}`)
+          .then(response => response.json())
+          .then(departamentos => {
+            const departamentoSelect = document.getElementById('departamentoSelect');
+            departamentoSelect.innerHTML = '<option value="" disabled selected>Seleccione un departamento</option>';
+            departamentos.forEach(depto => {
+              const option = document.createElement('option');
+              option.value = depto;
+              option.textContent = depto;
+              departamentoSelect.appendChild(option);
             });
-
-            if (listaNulo) {
-              html += `
-                <tr>
-                  <td>NULO</td>
-                  <td>${listaNulo.votos}</td>
-                  <td>${listaNulo.porcentaje}%</td>
-                </tr>`;
-            }
-            if (listaBlanco) {
-              html += `
-                <tr>
-                  <td>BLANCO</td>
-                  <td>${listaBlanco.votos}</td>
-                  <td>${listaBlanco.porcentaje}%</td>
-                </tr>`;
-            }
-            
-            html += '</tbody></table>';
-
-            // Encontrar las listas con mayor número de votos
-            if (listasNormales.length > 0) {
-              const maxVotos = Math.max(...listasNormales.map(lista => lista.votos));
-              const listasGanadoras = listasNormales.filter(lista => lista.votos === maxVotos);
-
-              // Verificar si los votos nulos superan a la lista ganadora
-              if (listaNulo && listaNulo.votos > maxVotos) {
-                html += `<p style="color: red; text-align: center; font-weight: bold; font-size: 16px;">
-                  ATENCIÓN: De acuerdo a los resultados obtenidos, se registra un total de ${listaNulo.votos} votos nulos (${listaNulo.porcentaje}%), 
-                  superando a la lista con mayor votación ${listasGanadoras[0].nombre} que obtuvo ${maxVotos} votos (${listasGanadoras[0].porcentaje}%).<br><br>
-                  En conformidad con el reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
-                  se deberá convocar a un nuevo proceso electoral para la elección de la directiva.</p>`;
-              } 
-              // Verificar si hay empate
-              else if (listasGanadoras.length > 1) {
-                const listasPorcentaje = listasGanadoras[0].porcentaje;
-                const nombresListas = listasGanadoras.map(lista => lista.nombre).join(' y ');
-                html += `
-                  <div style="margin: 20px 0;">
-                    <p style="color: #dc3545; text-align: center; font-weight: bold; font-size: 16px; margin: 0;">
-                      ATENCIÓN: Se ha registrado un empate técnico entre las listas ${nombresListas}, 
-                      cada una con ${maxVotos} votos, representando un ${listasPorcentaje}% del total de votos emitidos.
-                    </p>
-                    <p style="color: #dc3545; text-align: center; font-weight: bold; font-size: 16px; margin-top: 15px;">
-                      De acuerdo al reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
-                      se deberá convocar a un nuevo proceso electoral para definir la directiva ganadora.
-                    </p>
-                  </div>`;
-              }
-            }
-          } else {
-            html += `
-              <thead class="table-dark">
-                <tr>
-                  <th>Departamento</th>
-                  <th>Votos</th>
-                </tr>
-              </thead>
-              <tbody>`;
-
-            data.forEach(departamento => {
-              html += `
-                <tr>
-                  <td>${departamento.nombre}</td>
-                  <td>${departamento.votos}</td>
-                </tr>`;
-            });
-          }
-
-          html += '</tbody></table>';
-          return html;
-        }
-
-        function createChart(data, filterType) {
-          let labels = [];
-          let votosData = [];
-
-          if (filterType === 'lista') {
-              const listasNormales = data.filter(lista => lista.nombre.toLowerCase() !== 'nulo');
-              const listaNulo = data.find(lista => lista.nombre.toLowerCase() === 'nulo');
-
-              labels = listasNormales.map(lista => lista.nombre);
-              votosData = listasNormales.map(lista => lista.votos);
-
-              if (listaNulo) {
-                  labels.push('NULO');
-                  votosData.push(listaNulo.votos);
-              }
-          } else if (filterType === 'departamento') {
-              labels = data.map(departamento => departamento.nombre);
-              votosData = data.map(departamento => departamento.votos);
-          }
-
-          // Generar una lista de colores únicos para cada barra
-          const colors = generateUniqueColors(votosData.length);
-
-          const ctx = filterType === 'lista' ? document.getElementById('listaChart').getContext('2d') : document.getElementById('departamentoChart').getContext('2d');
-
-          // Destruir la gráfica anterior si existe
-          if (window.votosChart) {
-              window.votosChart.destroy();
-          }
-
-          // Crear la nueva gráfica
-          window.votosChart = new Chart(ctx, {
-              type: 'bar',
-              data: {
-                  labels: labels,
-                  datasets: [{
-                      label: 'Número de Votos',
-                      data: votosData,
-                      backgroundColor: colors,
-                      borderColor: colors,
-                      borderWidth: 1
-                  }]
-              },
-              options: {
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  scales: {
-                      y: {
-                          beginAtZero: true,
-                          ticks: {
-                              stepSize: Math.ceil(Math.max(...votosData) / 10),
-                              callback: function(value) {
-                                  if (value >= 1000) {
-                                      return value / 1000 + 'k'; 
-                                  }
-                                  return value;
-                              }
-                          },
-                          max: Math.ceil(Math.max(...votosData) * 1.2)
-                      }
-                  },
-                  plugins: {
-                      legend: {
-                          display: false
-                      }
-                  }
-              }
+          })
+          .catch(err => {
+            console.error('Error al obtener departamentos:', err);
+            alert('Error al obtener los departamentos. Por favor intente nuevamente.');
           });
       }
+
+      // Evento de cambio de periodo
+      document.getElementById('periodoSelect').addEventListener('change', function(e) {
+        const filterType = document.getElementById('filterTypeSelect').value;
+        if (filterType === 'departamento') {
+          cargarDepartamentos(e.target.value);
+        }
+      });
+
+      document.getElementById('filterTypeSelect').addEventListener('change', function(e) {
+        const departamentoContainer = document.getElementById('departamentoFilterContainer');
+        if (e.target.value === 'departamento') {
+          departamentoContainer.style.display = 'block';
+          // Obtener el periodo seleccionado
+          const periodo = document.getElementById('periodoSelect').value;
+          if (!periodo) {
+            alert('Por favor seleccione un periodo primero');
+            e.target.value = 'lista';
+            return;
+          }
+          cargarDepartamentos(periodo);
+        } else {
+          departamentoContainer.style.display = 'none';
+        }
+      });
+
+      document.getElementById('resultForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const periodo = document.getElementById('periodoSelect').value;
+        const filterType = document.getElementById('filterTypeSelect').value;
+        const departamento = document.getElementById('departamentoSelect').value;
+        const resultContainer = document.getElementById('resultContainer');
+        const resultTable = document.getElementById('resultTable');
+        const periodoHeader = document.getElementById('periodoHeader');
+        const ganadoresContainer = document.getElementById('ganadoresContainer');
+        
+        const listaChartContainer = document.getElementById('listaChartContainer');
+        const departamentoChartContainer = document.getElementById('departamentoChartContainer');
+
+        if (periodo) {
+          let apiUrl;
+          if (filterType === 'lista') {
+            apiUrl = `/api/resultados?periodo=${periodo}`;
+          } else {
+            if (!departamento) {
+              alert('Por favor seleccione un departamento');
+              return;
+            }
+            apiUrl = `/api/resultados/departamento?periodo=${periodo}&departamento=${departamento}`;
+          }
+          
+          fetch(apiUrl)
+            .then(response => {
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              return response.json();
+            })
+            .then(data => {
+              console.log('Datos recibidos del servidor:', data); // Para debug
+              
+              periodoHeader.textContent = `Resultados para el periodo ${periodo}${filterType === 'departamento' ? ` - Departamento: ${departamento}` : ''}`;
+              
+              // Verificar si hay mensaje de no datos antes de cualquier otro procesamiento
+              if (data && data.noData) {
+                resultTable.innerHTML = `<div class="alert alert-info" role="alert">
+                  <h4 class="alert-heading">Información</h4>
+                  <p>${data.message}</p>
+                </div>`;
+                ganadoresContainer.style.display = 'none';
+                listaChartContainer.style.display = 'none';
+                departamentoChartContainer.style.display = 'none';
+                resultContainer.style.display = 'block';
+                return;
+              }
+              
+              if (filterType === 'lista') {
+                // Mostrar tabla de resultados
+                resultTable.innerHTML = generateResultsHtml(data.resultados);
+                
+                // Verificar si hay ganador único y no hay nulos mayoritarios
+                const listasNormales = data.resultados.filter(lista => !['NULO', 'BLANCO'].includes(lista.nombre.toUpperCase()));
+                const listaNulo = data.resultados.find(lista => lista.nombre.toUpperCase() === 'NULO');
+                const maxVotos = Math.max(...listasNormales.map(lista => lista.votos));
+                const listasGanadoras = listasNormales.filter(lista => lista.votos === maxVotos);
+                
+                // Solo mostrar ganador si hay un único ganador y los nulos no son mayoría o iguales
+                if (listasGanadoras.length === 1 && (!listaNulo || listaNulo.votos < maxVotos)) {
+                  if (data.ganadores) {
+                    document.getElementById('nombreListaGanadora').textContent = `${data.ganadores.lista} - ${data.ganadores.porcentaje}% de los votos`;
+                    
+                    // Mostrar información de los candidatos
+                    data.ganadores.candidatos.forEach(candidato => {
+                      if (candidato.dignidad === 'presidente') {
+                        document.getElementById('nombrePresidente').textContent = candidato.nombre;
+                        document.getElementById('fotoPresidente').src = candidato.foto;
+                      } else if (candidato.dignidad === 'vicepresidente') {
+                        document.getElementById('nombreVicepresidente').textContent = candidato.nombre;
+                        document.getElementById('fotoVicepresidente').src = candidato.foto;
+                      }
+                    });
+                    
+                    ganadoresContainer.style.display = 'block';
+                  }
+                } else {
+                  ganadoresContainer.style.display = 'none';
+                }
+                
+                listaChartContainer.style.display = 'block';
+                departamentoChartContainer.style.display = 'none';
+                createChart(data.resultados, 'lista');
+              } else {
+                if (!Array.isArray(data)) {
+                  console.error('Los datos recibidos no son un array:', data);
+                  resultTable.innerHTML = '<div class="alert alert-danger">No hay datos disponibles</div>';
+                  ganadoresContainer.style.display = 'none';
+                  listaChartContainer.style.display = 'none';
+                  departamentoChartContainer.style.display = 'none';
+                  resultContainer.style.display = 'block';
+                  return;
+                }
+                
+                resultTable.innerHTML = generateDepartamentoResultsHtml(data);
+                ganadoresContainer.style.display = 'none';
+                listaChartContainer.style.display = 'none';
+                departamentoChartContainer.style.display = 'block';
+                createDepartamentoChart(data);
+              }
+              
+              resultContainer.style.display = 'block';
+            })
+            .catch(err => {
+              console.error('Error al obtener los resultados:', err);
+              resultTable.innerHTML = '<div class="alert alert-danger">Error al obtener los resultados. Por favor intente nuevamente.</div>';
+              resultContainer.style.display = 'block';
+            });
+        }
+      });
+
+      function generateResultsHtml(data, filterType = 'lista') {
+        let html = '<table class="table table-bordered table-striped table-hover">';
+        
+        if (filterType === 'lista') {
+          const listasNormales = data.filter(lista => !['NULO', 'BLANCO'].includes(lista.nombre.toUpperCase()));
+          const listaNulo = data.find(lista => lista.nombre.toUpperCase() === 'NULO');
+          const listaBlanco = data.find(lista => lista.nombre.toUpperCase() === 'BLANCO');
+
+          html += `
+            <thead class="table-dark">
+              <tr>
+                <th>Lista</th>
+                <th>Votos</th>
+                <th>Porcentaje</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+          listasNormales.forEach(lista => {
+            html += `
+              <tr>
+                <td>${lista.nombre}</td>
+                <td>${lista.votos}</td>
+                <td>${lista.porcentaje}%</td>
+              </tr>`;
+          });
+
+          if (listaNulo) {
+            html += `
+              <tr>
+                <td>NULO</td>
+                <td>${listaNulo.votos}</td>
+                <td>${listaNulo.porcentaje}%</td>
+              </tr>`;
+          }
+          if (listaBlanco) {
+            html += `
+              <tr>
+                <td>BLANCO</td>
+                <td>${listaBlanco.votos}</td>
+                <td>${listaBlanco.porcentaje}%</td>
+              </tr>`;
+          }
+          
+          html += '</tbody></table>';
+
+          // Encontrar las listas con mayor número de votos
+          if (listasNormales.length > 0) {
+            const maxVotos = Math.max(...listasNormales.map(lista => lista.votos));
+            const listasGanadoras = listasNormales.filter(lista => lista.votos === maxVotos);
+
+            // Verificar si los votos nulos son mayores o iguales a la lista con más votos
+            if (listaNulo && listaNulo.votos >= maxVotos) {
+              html += `<p style="color: red; text-align: center; font-weight: bold; font-size: 16px;">
+                ATENCIÓN: De acuerdo a los resultados obtenidos, se registra un total de ${listaNulo.votos} votos nulos (${listaNulo.porcentaje}%), 
+                ${listaNulo.votos > maxVotos ? 'superando' : 'igualando'} a la lista con mayor votación ${listasGanadoras[0].nombre} que obtuvo ${maxVotos} votos (${listasGanadoras[0].porcentaje}%).<br><br>
+                En conformidad con el reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
+                se deberá convocar a un nuevo proceso electoral para la elección de la directiva.</p>`;
+            } 
+            // Verificar si hay empate
+            else if (listasGanadoras.length > 1) {
+              const listasPorcentaje = listasGanadoras[0].porcentaje;
+              const nombresListas = listasGanadoras.map(lista => lista.nombre).join(' y ');
+              html += `
+                <div style="margin: 20px 0;">
+                  <p style="color: #dc3545; text-align: center; font-weight: bold; font-size: 16px; margin: 0;">
+                    ATENCIÓN: Se ha registrado un empate técnico entre las listas ${nombresListas}, 
+                    cada una con ${maxVotos} votos, representando un ${listasPorcentaje}% del total de votos emitidos.
+                  </p>
+                  <p style="color: #dc3545; text-align: center; font-weight: bold; font-size: 16px; margin-top: 15px;">
+                    De acuerdo al reglamento electoral de la Asociación de Docentes de las Fuerzas Armadas (ADUFA), 
+                    se deberá convocar a un nuevo proceso electoral para definir la directiva ganadora.
+                  </p>
+                </div>`;
+            }
+          }
+        } else {
+          html += `
+            <thead class="table-dark">
+              <tr>
+                <th>Departamento</th>
+                <th>Votos</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+          data.forEach(departamento => {
+            html += `
+              <tr>
+                <td>${departamento.nombre}</td>
+                <td>${departamento.votos}</td>
+              </tr>`;
+          });
+        }
+
+        html += '</tbody></table>';
+        return html;
+      }
+
+      function generateDepartamentoResultsHtml(data) {
+        console.log('Datos recibidos en generateDepartamentoResultsHtml:', data);
+        
+        // Verificar si hay un mensaje de no datos
+        if (data && data.noData) {
+          return `<div class="alert alert-info" role="alert">
+            <h4 class="alert-heading">Información</h4>
+            <p>${data.message}</p>
+          </div>`;
+        }
+
+        let html = '<table class="table table-bordered table-striped table-hover">';
+        html += `
+          <thead class="table-dark">
+            <tr>
+              <th>Lista</th>
+              <th>Votos</th>
+              <th>Porcentaje</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+        if (Array.isArray(data)) {
+          // Filtrar primero las listas normales
+          const listasNormales = data.filter(item => 
+            item && item.nombre && !['NULO', 'BLANCO'].includes(item.nombre.toUpperCase())
+          );
+
+          // Calcular el total de votos para el porcentaje
+          const totalVotos = data.reduce((sum, item) => sum + (parseInt(item.votos) || 0), 0);
+
+          // Mostrar primero las listas normales
+          data.forEach(item => {
+            if (item && item.nombre) {
+              const porcentaje = totalVotos > 0 ? ((parseInt(item.votos) / totalVotos) * 100).toFixed(2) : "0.00";
+              html += `
+                <tr>
+                  <td>${item.nombre}</td>
+                  <td>${item.votos}</td>
+                  <td>${porcentaje}%</td>
+                </tr>`;
+            }
+          });
+        } else {
+          console.error('Los datos no tienen el formato esperado:', data);
+          html += `
+            <tr>
+              <td colspan="3" class="text-center">No hay datos disponibles</td>
+            </tr>`;
+        }
+
+        html += '</tbody></table>';
+        return html;
+      }
+
+      function createChart(data, filterType) {
+        let labels = [];
+        let votosData = [];
+
+        if (filterType === 'lista') {
+            const listasNormales = data.filter(lista => lista.nombre.toLowerCase() !== 'nulo');
+            const listaNulo = data.find(lista => lista.nombre.toLowerCase() === 'nulo');
+
+            labels = listasNormales.map(lista => lista.nombre);
+            votosData = listasNormales.map(lista => lista.votos);
+
+            if (listaNulo) {
+                labels.push('NULO');
+                votosData.push(listaNulo.votos);
+            }
+        } else if (filterType === 'departamento') {
+            labels = data.map(departamento => departamento.nombre);
+            votosData = data.map(departamento => departamento.votos);
+        }
+
+        // Generar una lista de colores únicos para cada barra
+        const colors = generateUniqueColors(votosData.length);
+
+        const ctx = filterType === 'lista' ? document.getElementById('listaChart').getContext('2d') : document.getElementById('departamentoChart').getContext('2d');
+
+        // Destruir la gráfica anterior si existe
+        if (window.votosChart) {
+            window.votosChart.destroy();
+        }
+
+        // Crear la nueva gráfica
+        window.votosChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Número de Votos',
+                    data: votosData,
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: Math.ceil(Math.max(...votosData) / 10),
+                            callback: function(value) {
+                                if (value >= 1000) {
+                                    return value / 1000 + 'k'; 
+                                }
+                                return value;
+                            }
+                        },
+                        max: Math.ceil(Math.max(...votosData) * 1.2)
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
     // Función para generar colores únicos
     function generateUniqueColors(numColors) {
         const colors = [];
@@ -460,6 +611,96 @@
 
         return colors;
     }
+
+    function createDepartamentoChart(data) {
+      console.log('Datos para gráfica:', data);
+      
+      // Si no hay datos o hay un mensaje de no datos, no crear la gráfica
+      if (data.noData) {
+        return;
+      }
+      
+      const ctx = document.getElementById('departamentoChart').getContext('2d');
+      
+      if (!Array.isArray(data)) {
+        console.error('Los datos no son un array:', data);
+        return;
+      }
+
+      // Preparar datos para la gráfica
+      const labels = data.map(item => item.nombre);
+      const votosData = data.map(item => parseInt(item.votos) || 0);
+      
+      // Generar colores únicos, con colores específicos para nulos y blancos
+      const colors = data.map(item => {
+        if (item.nombre === 'NULO') {
+          return '#dc3545'; // Rojo para nulos
+        } else if (item.nombre === 'BLANCO') {
+          return '#6c757d'; // Gris para blancos
+        } else {
+          // Generar un color aleatorio para las listas
+          const hue = Math.random() * 360;
+          return `hsl(${hue}, 70%, 50%)`;
+        }
+      });
+
+      // Destruir gráfica anterior si existe
+      if (window.votosChart) {
+        window.votosChart.destroy();
+      }
+
+      // Crear nueva gráfica
+      window.votosChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Votos',
+            data: votosData,
+            backgroundColor: colors,
+            borderColor: colors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1,
+                callback: function(value) {
+                  if (value % 1 === 0) {
+                    return value;
+                  }
+                }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            title: {
+              display: true,
+              text: `Distribución de votos por lista en el departamento seleccionado`,
+              font: {
+                size: 16,
+                weight: 'bold'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Evento para reajustar el tamaño de las gráficas cuando se redimensiona la ventana
+    window.addEventListener('resize', function() {
+      if (window.votosChart) {
+        window.votosChart.resize();
+      }
+    });
     });
   </script>
 </body>

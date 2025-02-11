@@ -1465,52 +1465,92 @@ app.delete('/api/usuarios-crud/:id', async (req, res) => {
 
 app.get('/api/resultados/departamento', async (req, res) => {
   const periodo = req.query.periodo;
+  const departamento = req.query.departamento;
+
+  if (!periodo || !departamento) {
+    return res.status(400).json({ message: 'Periodo y departamento son requeridos' });
+  }
 
   try {
     const connection = await oracledb.getConnection(dbConfig);
 
-    // Primero obtener todos los usuarios con sus departamentos
+    // Primero obtener los usuarios del departamento
     const usuariosResult = await connection.execute(
-      `SELECT ID_US, DEPARTAMENTO_US
-       FROM USUARIOS
-       WHERE ID_ROL = '2' AND ESTADO_US = '1'`
+      `SELECT ID_US 
+       FROM USUARIOS 
+       WHERE DEPARTAMENTO_US = :departamento 
+       AND ID_ROL = '2' 
+       AND ESTADO_US = '1'`,
+      [departamento]
     );
 
-    // Obtener todos los votos del periodo
-    const votosResult = await connection.execute(
-      `SELECT ID_US
-       FROM VOTOS
-       WHERE PERIODO_POSTULACION = :periodo`,
-      [periodo]
+    // Crear array de IDs hasheados
+    const usuariosHasheados = usuariosResult.rows.map(([id]) => hashUsuario(id));
+
+    if (usuariosHasheados.length === 0) {
+      await connection.close();
+      return res.json({
+        noData: true,
+        message: `No se encontraron votantes registrados en el departamento ${departamento} para el periodo ${periodo}.`
+      });
+    }
+
+    // Obtener los votos usando los IDs hasheados
+    const query = `
+      WITH VotosProcesados AS (
+        SELECT 
+          CASE 
+            WHEN v.ID_LISTA = 'nulo' THEN 'NULO'
+            WHEN v.ID_LISTA = 'blanco' THEN 'BLANCO'
+            ELSE l.NOMBRE_LISTA 
+          END as NOMBRE,
+          v.ID_US
+        FROM VOTOS v
+        LEFT JOIN LISTAS l ON v.ID_LISTA = l.ID_LISTA AND v.PERIODO_POSTULACION = l.PERIODO_POSTULACION
+        WHERE v.PERIODO_POSTULACION = :periodo
+        AND v.ID_US IN (${usuariosHasheados.map(id => `'${id}'`).join(',')})
+      )
+      SELECT 
+        NOMBRE,
+        COUNT(ID_US) as VOTOS
+      FROM VotosProcesados
+      GROUP BY NOMBRE
+      ORDER BY 
+        CASE 
+          WHEN NOMBRE IN ('NULO', 'BLANCO') THEN 2
+          ELSE 1 
+        END,
+        NOMBRE`;
+
+    const result = await connection.execute(
+      query,
+      [periodo],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    // Crear un Map de usuarios hasheados que han votado
-    const votosSet = new Set(votosResult.rows.map(([idUs]) => idUs));
+    // Si no hay votos registrados
+    if (result.rows.length === 0) {
+      await connection.close();
+      return res.json({
+        noData: true,
+        message: `No se han registrado votos en el departamento ${departamento} para el periodo ${periodo}.`
+      });
+    }
 
-    // Agrupar votos por departamento
-    const departamentosMap = new Map();
-
-    usuariosResult.rows.forEach(([idUs, departamento]) => {
-      const idHasheado = hashUsuario(idUs);
-      if (votosSet.has(idHasheado)) {
-        departamentosMap.set(
-          departamento, 
-          (departamentosMap.get(departamento) || 0) + 1
-        );
-      }
-    });
-
-    // Convertir el Map a el formato esperado por el frontend
-    const data = Array.from(departamentosMap.entries()).map(([nombre, votos]) => ({
-      nombre,
-      votos
+    // Formatear resultados
+    const resultadosFormateados = result.rows.map(row => ({
+      nombre: row.NOMBRE,
+      votos: row.VOTOS
     }));
 
-    res.json(data);
     await connection.close();
+    res.json(resultadosFormateados);
   } catch (err) {
     console.error('Error al obtener resultados por departamento:', err);
-    res.status(500).send('Error en el servidor');
+    res.status(500).json({ 
+      message: 'Error al obtener resultados por departamento',
+      error: err.message 
+    });
   }
 });
 
@@ -2338,5 +2378,119 @@ app.get('/verificar-administrador', async (req, res) => {
   } catch (error) {
     console.error('Error al verificar administrador:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Ruta para obtener todos los departamentos
+app.get('/api/departamentos', async (req, res) => {
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+
+    const result = await connection.execute(
+      `SELECT DISTINCT DEPARTAMENTO_US 
+       FROM USUARIOS 
+       WHERE ID_ROL = '2' 
+       AND ESTADO_US = '1'
+       AND DEPARTAMENTO_US IS NOT NULL
+       ORDER BY DEPARTAMENTO_US`
+    );
+
+    await connection.close();
+
+    const departamentos = result.rows.map(row => row[0]).filter(Boolean);
+    console.log('Departamentos encontrados:', departamentos);
+    res.json(departamentos);
+  } catch (err) {
+    console.error('Error al obtener departamentos:', err);
+    res.status(500).json({ error: 'Error al obtener departamentos' });
+  }
+});
+
+// Ruta para obtener resultados por departamento
+app.get('/api/resultados/departamento', async (req, res) => {
+  const periodo = req.query.periodo;
+  const departamento = req.query.departamento;
+
+  if (!periodo || !departamento) {
+    return res.status(400).json({ message: 'Periodo y departamento son requeridos' });
+  }
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+
+    // Primero obtener los usuarios del departamento
+    const usuariosResult = await connection.execute(
+      `SELECT ID_US 
+       FROM USUARIOS 
+       WHERE DEPARTAMENTO_US = :departamento 
+       AND ID_ROL = '2' 
+       AND ESTADO_US = '1'`,
+      [departamento]
+    );
+
+    // Crear array de IDs hasheados
+    const usuariosHasheados = usuariosResult.rows.map(([id]) => hashUsuario(id));
+
+    if (usuariosHasheados.length === 0) {
+      await connection.close();
+      return res.json({
+        noData: true,
+        message: `No se encontraron votantes registrados en el departamento ${departamento} para el periodo ${periodo}.`
+      });
+    }
+
+    // Obtener los votos usando los IDs hasheados
+    const query = `
+      SELECT 
+        CASE 
+          WHEN v.ID_LISTA IN ('nulo', 'blanco') THEN UPPER(v.ID_LISTA)
+          ELSE l.NOMBRE_LISTA 
+        END as NOMBRE,
+        COUNT(v.ID_US) as VOTOS
+      FROM VOTOS v
+      LEFT JOIN LISTAS l ON v.ID_LISTA = l.ID_LISTA AND v.PERIODO_POSTULACION = l.PERIODO_POSTULACION
+      WHERE v.PERIODO_POSTULACION = :periodo
+      AND v.ID_US IN (${usuariosHasheados.map(id => `'${id}'`).join(',')})
+      GROUP BY 
+        CASE 
+          WHEN v.ID_LISTA IN ('nulo', 'blanco') THEN UPPER(v.ID_LISTA)
+          ELSE l.NOMBRE_LISTA 
+        END
+      ORDER BY 
+        CASE 
+          WHEN UPPER(v.ID_LISTA) IN ('NULO', 'BLANCO') THEN 2
+          ELSE 1 
+        END,
+        NOMBRE`;
+
+    const result = await connection.execute(
+      query,
+      [periodo],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    // Si no hay votos registrados
+    if (result.rows.length === 0) {
+      await connection.close();
+      return res.json({
+        noData: true,
+        message: `No se han registrado votos en el departamento ${departamento} para el periodo ${periodo}.`
+      });
+    }
+
+    // Formatear resultados
+    const resultadosFormateados = result.rows.map(row => ({
+      nombre: row.NOMBRE,
+      votos: row.VOTOS
+    }));
+
+    await connection.close();
+    res.json(resultadosFormateados);
+  } catch (err) {
+    console.error('Error al obtener resultados por departamento:', err);
+    res.status(500).json({ 
+      message: 'Error al obtener resultados por departamento',
+      error: err.message 
+    });
   }
 });
