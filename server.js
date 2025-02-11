@@ -193,18 +193,18 @@ const transporter = nodemailer.createTransport({
 
 
 // Configuración de la base de datos
-const dbConfig = {
+/* const dbConfig = {
   user: 'C##emilioadmin',
   password: 'Emilio.*142002',
-  connectString: 'localhost/XE'
-};
+  connectString: 'localhost/orcl'
+}; */
 
 // Configuración de la base de datos
-// const dbConfig = {
-//   user: 'ADMIN', // Usuario de la base de datos
-//   password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
-//   connectString: 'votoelectronico_high' // Usar el alias del tnsnames.ora
-// };
+const dbConfig = {
+  user: 'ADMIN', // Usuario de la base de datos
+  password: 'xXsCzXQj@S39', // Contraseña del usuario de la base de datos
+  connectString: 'votoelectronico_high' // Usar el alias del tnsnames.ora
+};
 
 // Función para enviar correos con un retardo de 10 segundos
 function enviarCorreoConRetardo(transporter, mailOptions, delay) {
@@ -891,7 +891,7 @@ app.post('/guardar-votos', async (req, res) => {
 
     await connection.execute(insertQuery, [id_lista, period, usuarioHash, aceptaAuditoria]);
 
-    console.log('=== Datos a guardar en la base de datos ===');
+    /* console.log('=== Datos a guardar en la base de datos ===');
     console.log('ID Usuario:', usuario);
     console.log('ID Usuario Hash:', usuarioHash);
     console.log('Periodo:', period);
@@ -900,10 +900,10 @@ app.post('/guardar-votos', async (req, res) => {
     console.log('Acepta Auditoría:', aceptaAuditoria);
     console.log('ID Voto generado:', idVoto);
     console.log('Fecha y hora del voto:', new Date().toISOString());
-    console.log('=====================================');
+    console.log('====================================='); */
 
     // Llamada a la Blockchain platform de OCI
-    /* const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
+    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v9",
       args: [
@@ -927,12 +927,12 @@ app.post('/guardar-votos', async (req, res) => {
       }
     });
 
-    console.log('Blockchain response:', blockchainResponse.data); */
+    console.log('Blockchain response:', blockchainResponse.data);
 
     await connection.commit();
 
     // Enviar correo de confirmación
-    /* const emailQuery = `SELECT EMAIL_US FROM USUARIOS WHERE ID_US = :usuario`;
+    const emailQuery = `SELECT EMAIL_US FROM USUARIOS WHERE ID_US = :usuario`;
     const emailResult = await connection.execute(emailQuery, [usuario]);
     const emailUsuario = emailResult.rows[0][0];
 
@@ -957,7 +957,7 @@ app.post('/guardar-votos', async (req, res) => {
       } else {
         console.log('Correo de confirmación enviado:', info.response);
       }
-    }); */
+    });
 
     res.status(200).json({ message: 'Su voto fue guardado correctamente y se ha enviado un correo de confirmación.' });
 
