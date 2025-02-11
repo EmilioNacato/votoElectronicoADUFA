@@ -1883,7 +1883,7 @@ section,
 
 .input-container {
   position: relative;
-  height: 753px; /* Ajuste automático de la altura */
+  height: 800px; /* Ajuste automático de la altura */
   width: 100%; /* Asegura que se ajuste al contenedor */
   max-width: 400px; /* Limita el tamaño máximo */
   box-sizing: border-box; /* Incluye padding y border en el width */
@@ -1902,7 +1902,7 @@ section,
   position: absolute;
   top: 0;
   left: 0;
-  height: 753px;
+  height: 800px;
   width: 100%;
   margin: 0;
   cursor: pointer;
@@ -2028,4 +2028,10 @@ section,
 .mobile-nav-toggle.open:hover,
 .mobile-nav-toggle.open:focus {
   color: red; /* Mantener rojo al pasar el mouse o enfocar */
+}
+
+.lista-item + span,
+.lista-item + text {
+  font-size: 5px; /* Ajusta este valor según necesites */
+  display: inline-block;
 }
