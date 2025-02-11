@@ -34,7 +34,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const fieldname = file.fieldname;
-    const fieldMatch = fieldname.match(/(fotoPresidenteLista|fotoVicepresidenteLista)(\d+)/);
+    const fieldMatch = fieldname.match(/(fotoPresidenteLISTA|fotoVicepresidenteLISTA)(\d+)/);
 
     if (fieldMatch) {
       const [ , type, index ] = fieldMatch;
