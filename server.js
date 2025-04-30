@@ -903,7 +903,7 @@ app.post('/guardar-votos', async (req, res) => {
     console.log('====================================='); */
 
     // Llamada a la Blockchain platform de OCI
-    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
+    const credentials = Buffer.from('USUARIOBLOCKCHAIN@gmail.com:CONTRASENIA').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v11",
       args: [
@@ -1124,7 +1124,7 @@ app.get('/api/resultados', async (req, res) => {
     }, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64')}`
+        'Authorization': `Basic ${Buffer.from('USUARIOBLOCKCHAIN@gmail.com:CONTRASENIA').toString('base64')}`
       }
     });
 
@@ -1705,7 +1705,7 @@ app.get('/api/resultados/blockchain', async (req, res) => {
   console.log(`Consultando votos por ${filterType} para periodo: ${periodo}`);
 
   try {
-    const credentials = Buffer.from('sebastianmogrovejo7@gmail.com:Emilio.*142002').toString('base64');
+    const credentials = Buffer.from('USUARIOBLOCKCHAIN@gmail.com:CONTRASENIA').toString('base64');
     const blockchainResponse = await axios.post('https://votoblockchain-4-bmogrovejog-iad.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/default/transactions', {
       chaincode: "data_synchronization_votos_v11",
       args: [
